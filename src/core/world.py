@@ -33,6 +33,7 @@ from src.entity.unit import Unit, UnitState
 from src.physics.body_factory import create_terrain_segment
 from src.physics.engine import CollisionType, PhysicsEngine
 from src.render.effects import EffectManager
+from src.ui.panel import InfoPanel
 
 if TYPE_CHECKING:
     from src.ai.strategy import AIStrategyManager
@@ -40,7 +41,6 @@ if TYPE_CHECKING:
     from src.core.config import GameConfig
     from src.economy.crafting import CraftingManager
     from src.render.overlay import TransparentOverlay
-    from src.ui.panel import InfoPanel
 
 
 class World:
@@ -52,9 +52,9 @@ class World:
         self.screen_width: int = overlay.width
         self.screen_height: int = overlay.height
 
-        # 物理引擎
+        # 物理引擎 (pymunk Y轴向上, 重力向下为负值)
         self.physics: PhysicsEngine = PhysicsEngine(
-            gravity=(0.0, self.config.gravity),
+            gravity=(0.0, -self.config.gravity),
             damping=self.config.damping,
             collision_slop=self.config.collision_slop,
             iterations=self.config.physics_iterations,
