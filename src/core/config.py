@@ -56,8 +56,8 @@ class FactionConfig(BaseModel):
     initial_units: int = Field(default=5, description="初始单位数")
     max_units: int = Field(default=30, description="最大单位数")
     unit_hp: int = Field(default=1000, description="单位HP")
-    move_speed: float = Field(default=60.0, description="移动速度(px/s)")
-    climb_speed: float = Field(default=40.0, description="攀爬速度(px/s)")
+    move_speed: float = Field(default=120.0, description="移动速度(px/s)")
+    climb_speed: float = Field(default=80.0, description="攀爬速度(px/s)")
     fist_damage: float = Field(default=2.5, description="徒手伤害(取均值)")
     gather_speed: float = Field(default=5.0, description="采集速度(资源/秒)")
 
@@ -117,6 +117,7 @@ class GameConfig(BaseModel):
 
     # ── 其他 ──
     game_speed: float = Field(default=1.0, description="游戏速度倍率")
+    move_speed_multiplier: float = Field(default=1.0, description="移动速度倍率(0.5~3.0)")
     terrain_friction: float = Field(default=0.8, description="地形摩擦系数")
     terrain_elasticity: float = Field(default=0.1, description="地形弹性系数")
     building_spacing: int = Field(default=10, description="建筑最小间距(px)")
@@ -129,7 +130,7 @@ class GameConfig(BaseModel):
                 name="红方",
                 color_hex="#FF4444",
                 secondary_color_hex="#FF8866",
-                move_speed=65.0,
+                move_speed=130.0,
                 fist_damage=3.0,
                 gather_speed=4.5,
             ),
@@ -138,7 +139,7 @@ class GameConfig(BaseModel):
                 color_hex="#4488FF",
                 secondary_color_hex="#66AAFF",
                 unit_hp=1050,
-                move_speed=60.0,
+                move_speed=120.0,
                 fist_damage=2.0,
                 gather_speed=5.5,
             ),

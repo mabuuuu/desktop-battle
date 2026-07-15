@@ -136,14 +136,17 @@ class Unit:
         # 更新朝向
         self.facing_right = dx > 0
 
+        # 应用速度倍率
+        effective_speed = self.move_speed * self.config.move_speed_multiplier
+
         # 施加力（补偿阻尼）
-        force_magnitude = self.move_speed * 10.0
+        force_magnitude = effective_speed * 10.0
         self.body.apply_force_at_local_point((direction * force_magnitude, 0.0), (0.0, 0.0))
 
         # 限制最大速度
         vx = self.body.velocity.x
-        if abs(vx) > self.move_speed:
-            self.body.velocity = (direction * self.move_speed, self.body.velocity.y)
+        if abs(vx) > effective_speed:
+            self.body.velocity = (direction * effective_speed, self.body.velocity.y)
 
         if self.state not in (UnitState.FIGHTING, UnitState.CLIMBING,
                               UnitState.DYING, UnitState.MINING,

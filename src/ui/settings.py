@@ -55,6 +55,7 @@ class RuntimeSettings:
 
     # ── 物理 ──
     gravity: float = 900.0
+    move_speed_multiplier: float = 1.0  # 0.5 ~ 3.0
 
 
 class SettingsManager:
@@ -107,6 +108,7 @@ class SettingsManager:
         """
         try:
             game_config.game_speed = self.settings.game_speed  # type: ignore[attr-defined]
+            game_config.move_speed_multiplier = self.settings.move_speed_multiplier  # type: ignore[attr-defined]
         except AttributeError:
             pass
 
@@ -124,6 +126,7 @@ class SettingsManager:
             "ai_model": self.settings.ai_model,
             "ai_interval": self.settings.ai_interval,
             "gravity": self.settings.gravity,
+            "move_speed_multiplier": self.settings.move_speed_multiplier,
         }
 
     def _apply_data(self, data: dict[str, Any]) -> None:
@@ -150,6 +153,8 @@ class SettingsManager:
             self.settings.ai_interval = float(data["ai_interval"])
         if "gravity" in data:
             self.settings.gravity = float(data["gravity"])
+        if "move_speed_multiplier" in data:
+            self.settings.move_speed_multiplier = float(data["move_speed_multiplier"])
 
     def set(self, key: str, value: Any) -> None:
         """修改单个设置项.
