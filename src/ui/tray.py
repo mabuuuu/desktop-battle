@@ -32,9 +32,9 @@ class TrayManager:
 
         # 菜单格式: (文本, 图标路径或None, 回调函数或SysTrayIcon.QUIT)
         self._menu: tuple = (
-            ("Pause/Resume", None, self._on_toggle_pause),
-            ("Toggle Panel", None, self._on_toggle_panel),
-            ("Settings", None, self._on_open_settings),
+            ("暂停 / 继续", None, self._on_toggle_pause),
+            ("信息面板", None, self._on_toggle_panel),
+            ("设置", None, self._on_open_settings),
         )
 
         self._systray: SysTrayIcon | None = None
