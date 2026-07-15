@@ -34,8 +34,8 @@ BUILDING_SPECS: dict[tuple[str, int], BuildingSpec] = {
     ("workbench", 1): BuildingSpec(
         name="工具台 Lv1",
         building_type="workbench",
-        width=30,
-        height=20,
+        width=15,
+        height=10,
         hp=500,
         build_cost_wood=15,
         build_cost_ore=0,
@@ -45,8 +45,8 @@ BUILDING_SPECS: dict[tuple[str, int], BuildingSpec] = {
     ("workbench", 2): BuildingSpec(
         name="工具台 Lv2",
         building_type="workbench",
-        width=30,
-        height=20,
+        width=15,
+        height=10,
         hp=600,
         build_cost_wood=15,
         build_cost_ore=10,
@@ -56,8 +56,8 @@ BUILDING_SPECS: dict[tuple[str, int], BuildingSpec] = {
     ("workbench", 3): BuildingSpec(
         name="工具台 Lv3",
         building_type="workbench",
-        width=30,
-        height=20,
+        width=15,
+        height=10,
         hp=700,
         build_cost_wood=10,
         build_cost_ore=20,
@@ -67,8 +67,8 @@ BUILDING_SPECS: dict[tuple[str, int], BuildingSpec] = {
     ("barracks", 1): BuildingSpec(
         name="兵营",
         building_type="barracks",
-        width=40,
-        height=30,
+        width=20,
+        height=15,
         hp=800,
         build_cost_wood=20,
         build_cost_ore=10,
@@ -95,8 +95,8 @@ class Building:
     # ── 属性 ──
     hp: float = 500.0
     max_hp: float = 500.0
-    width: int = 30
-    height: int = 20
+    width: int = 15
+    height: int = 10
 
     # ── 生产队列 (仅兵营) ──
     production_queue: list[float] = field(default_factory=list)

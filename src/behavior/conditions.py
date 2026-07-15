@@ -102,7 +102,7 @@ class EnemyInAttackRange(py_trees.behaviour.Behaviour):
 
         sx, sy = unit.screen_position(world.screen_height)
         ex, ey = enemy.screen_position(world.screen_height)
-        attack_range = 20.0  # 默认徒手范围
+        attack_range = 10.0  # 默认徒手范围
         if unit.weapon is not None:
             try:
                 attack_range = unit.weapon.attack_range  # type: ignore[union-attr]

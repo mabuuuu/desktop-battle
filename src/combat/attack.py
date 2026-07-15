@@ -38,7 +38,7 @@ def execute_melee_attack(attacker: Unit, defender: Unit, world: World) -> bool:
     dx, dy = defender.screen_position(world.screen_height)
 
     # 武器攻击范围
-    attack_range = 20.0  # 徒手
+    attack_range = 10.0  # 徒手
     base_damage = 2.5  # 徒手伤害 (取随机前均值)
     if attacker.weapon is not None:
         try:
@@ -96,7 +96,7 @@ def is_in_attack_range(
         是否在范围内
     """
     sx, sy = attacker.screen_position(screen_height)
-    attack_range = 20.0
+    attack_range = 10.0
     if attacker.weapon is not None:
         try:
             attack_range = attacker.weapon.attack_range  # type: ignore[union-attr]

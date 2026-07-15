@@ -22,7 +22,7 @@ class WeaponSpec:
     crafting_cost_ore: int = 0
     crafting_station: str = "none"  # "none" | "workbench_lv1" | "workbench_lv2" | "workbench_lv3"
     crafting_time: float = 0.0  # 制作时间 (秒)
-    visual_length: int = 10  # 视觉长度 (px)
+    visual_length: int = 5  # 视觉长度 (px)
 
 
 # 预定义武器规格
@@ -30,7 +30,7 @@ WEAPON_SPECS: dict[str, WeaponSpec] = {
     "fist": WeaponSpec(
         name="徒手",
         damage=2.5,
-        attack_range=20.0,
+        attack_range=10.0,
         attack_speed=1.5,
         knockback=50.0,
         damage_reduction=0.0,
@@ -43,7 +43,7 @@ WEAPON_SPECS: dict[str, WeaponSpec] = {
     "spear": WeaponSpec(
         name="长矛",
         damage=4.0,
-        attack_range=45.0,
+        attack_range=22.0,
         attack_speed=2.0,
         knockback=100.0,
         damage_reduction=0.0,
@@ -51,12 +51,12 @@ WEAPON_SPECS: dict[str, WeaponSpec] = {
         crafting_cost_ore=0,
         crafting_station="workbench_lv1",
         crafting_time=5.0,
-        visual_length=16,
+        visual_length=8,
     ),
     "sword": WeaponSpec(
         name="剑",
         damage=6.0,
-        attack_range=30.0,
+        attack_range=15.0,
         attack_speed=1.2,
         knockback=80.0,
         damage_reduction=0.0,
@@ -64,12 +64,12 @@ WEAPON_SPECS: dict[str, WeaponSpec] = {
         crafting_cost_ore=8,
         crafting_station="workbench_lv2",
         crafting_time=8.0,
-        visual_length=10,
+        visual_length=5,
     ),
     "shield": WeaponSpec(
         name="盾",
         damage=1.0,
-        attack_range=15.0,
+        attack_range=8.0,
         attack_speed=2.0,
         knockback=150.0,
         damage_reduction=0.4,
@@ -77,7 +77,7 @@ WEAPON_SPECS: dict[str, WeaponSpec] = {
         crafting_cost_ore=10,
         crafting_station="workbench_lv1",
         crafting_time=6.0,
-        visual_length=5,
+        visual_length=3,
     ),
 }
 

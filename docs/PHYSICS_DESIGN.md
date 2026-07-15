@@ -157,7 +157,7 @@ right_wall.collision_type = COLLISION_TERRAIN
 body = pymunk.Body(mass=1.0, moment=pymunk.moment_for_circle(1.0, 0, 4))
 body.position = (x, y)
 
-shape = pymunk.Circle(body, 4)  # 半径4px
+shape = pymunk.Circle(body, 2)  # 半径2px
 shape.friction = 0.6
 shape.elasticity = 0.1
 shape.collision_type = COLLISION_UNIT

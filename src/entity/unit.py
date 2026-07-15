@@ -59,7 +59,7 @@ class Unit:
     hp: float = 1000.0
     max_hp: float = 1000.0
     move_speed: float = 60.0
-    perception_range: float = 200.0
+    perception_range: float = 100.0
 
     # ── 状态 ──
     state: UnitState = UnitState.IDLE
@@ -232,14 +232,14 @@ class Unit:
 
         # 绘制血条
         hp_ratio = self.hp / self.max_hp
-        bar_width = 20
-        bar_y = sy - self.config.stickman_height - 8
+        bar_width = 10
+        bar_y = sy - self.config.stickman_height - 4
         draw_health_bar(
             buffer,
             sx - bar_width / 2,
             bar_y,
             bar_width,
-            3,
+            2,
             self.hp,
             self.max_hp,
             self._rgba_color,
@@ -265,8 +265,8 @@ class Unit:
         # 如果正在携带资源，绘制头顶的资源标记
         if self.carrying_wood > 0 or self.carrying_ore > 0:
             from src.render.sprite import draw_circle
-            mark_y = sy - self.config.stickman_height - 4
+            mark_y = sy - self.config.stickman_height - 2
             if self.carrying_wood > 0:
-                draw_circle(buffer, sx - 3, mark_y, 3, (68, 204, 68, 200), 0)
+                draw_circle(buffer, sx - 1.5, mark_y, 1.5, (68, 204, 68, 200), 0)
             if self.carrying_ore > 0:
-                draw_circle(buffer, sx + 3, mark_y, 3, (204, 170, 68, 200), 0)
+                draw_circle(buffer, sx + 1.5, mark_y, 1.5, (204, 170, 68, 200), 0)

@@ -56,17 +56,17 @@ class GameConfig(BaseModel):
     physics_iterations: int = Field(default=10, description="约束求解迭代次数")
 
     # ── 单位通用属性 ──
-    unit_perception_range: float = Field(default=200.0, description="感知范围(px)")
+    unit_perception_range: float = Field(default=100.0, description="感知范围(px)")
     unit_carry_capacity: int = Field(default=20, description="单次采集最大携带量")
-    unit_radius: float = Field(default=4.0, description="碰撞体半径(px)")
+    unit_radius: float = Field(default=2.0, description="碰撞体半径(px)")
     unit_mass: float = Field(default=1.0, description="单位质量")
     unit_friction: float = Field(default=0.6, description="单位摩擦系数")
     unit_elasticity: float = Field(default=0.1, description="单位弹性系数")
 
     # ── 火柴人渲染 ──
-    stickman_height: int = Field(default=40, description="火柴人总高度(px)")
-    stickman_line_width: int = Field(default=2, description="火柴人线宽(px)")
-    stickman_head_radius: int = Field(default=4, description="火柴人头部半径(px)")
+    stickman_height: int = Field(default=20, description="火柴人总高度(px)")
+    stickman_line_width: int = Field(default=1, description="火柴人线宽(px)")
+    stickman_head_radius: int = Field(default=2, description="火柴人头部半径(px)")
 
     # ── 资源 ──
     resource_output_rate: float = Field(default=5.0, description="采集点产率(资源/秒)")
@@ -96,7 +96,7 @@ class GameConfig(BaseModel):
     game_speed: float = Field(default=1.0, description="游戏速度倍率")
     terrain_friction: float = Field(default=0.8, description="地形摩擦系数")
     terrain_elasticity: float = Field(default=0.1, description="地形弹性系数")
-    building_spacing: int = Field(default=20, description="建筑最小间距(px)")
+    building_spacing: int = Field(default=10, description="建筑最小间距(px)")
     max_unit_fall_speed: float = Field(default=500.0, description="最大下落速度(px/s)")
 
     # ── 阵营 ──

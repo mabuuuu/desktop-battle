@@ -504,8 +504,8 @@ def draw_stickman(
     body_screen_y: float,
     faction_color: tuple[int, int, int, int],
     secondary_color: tuple[int, int, int, int],
-    line_width: int = 2,
-    head_radius: int = 4,
+    line_width: int = 1,
+    head_radius: int = 2,
     state: str = "idle",
     anim_frame: int = 0,
     weapon_visual: tuple[str, int] | None = None,
@@ -514,10 +514,10 @@ def draw_stickman(
     """在 RGBA buffer 上绘制火柴人.
 
     以 (body_screen_x, body_screen_y) 为脚底锚点:
-    - 身体从 (0, -32) 画到 (0, -16)——即从脚底向上 16~32px
-    - 头在 (0, -36)，半径 head_radius (4)
-    - 手臂从 (0, -28) 出发
-    - 腿从 (0, -16) 出发画到 (0, 0)
+    - 身体从 (0, -16) 画到 (0, -8)——即从脚底向上 8~16px
+    - 头在 (0, -18)，半径 head_radius (2)
+    - 手臂从 (0, -14) 出发
+    - 腿从 (0, -8) 出发画到 (0, 0)
 
     实际: 以 body_screen_y 为 Y=0（脚底），向上为负。
     """
@@ -529,24 +529,24 @@ def draw_stickman(
 
     dir_sign = 1 if facing_right else -1
 
-    # 身体线段: 脚底上方 16px 到 32px（总长 16px，即身体从(0, -32)到(0, -16)）
-    body_top_y = fy - 32
-    body_bottom_y = fy - 16
+    # 身体线段: 脚底上方 8px 到 16px（总长 8px，即身体从(0, -16)到(0, -8)）
+    body_top_y = fy - 16
+    body_bottom_y = fy - 8
 
     # 头位置
-    head_y = fy - 36
+    head_y = fy - 18
 
     # 手臂根位置
-    arm_root_y = fy - 28
+    arm_root_y = fy - 14
 
     # idle 呼吸微动
-    breath_offset = 1.0 if (anim_frame % 30) < 15 else 0.0
+    breath_offset = 0.5 if (anim_frame % 30) < 15 else 0.0
 
     # walking: 腿臂交替
     walk_swing = 0.0
     if state == "walking":
         walk_phase = (anim_frame % 20) / 20.0
-        walk_swing = _math.sin(walk_phase * _math.pi * 2) * 4.0
+        walk_swing = _math.sin(walk_phase * _math.pi * 2) * 2.0
 
     # mining: 手臂向下挥
     mining_angle = 0.0
@@ -559,51 +559,51 @@ def draw_stickman(
     if state == "attacking":
         attack_phase = (anim_frame % 12) / 12.0
         if attack_phase < 0.5:
-            attack_offset = attack_phase * 12
+            attack_offset = attack_phase * 6
         else:
-            attack_offset = (1.0 - attack_phase) * 12
+            attack_offset = (1.0 - attack_phase) * 6
 
     # fighting: 战斗姿态 (警戒，略微下蹲)
     fight_stance = 0.0
     if state == "fighting":
-        fight_stance = 3.0
+        fight_stance = 1.5
         attack_phase = (anim_frame % 15) / 15.0
         if attack_phase < 0.5:
-            attack_offset = attack_phase * 10
+            attack_offset = attack_phase * 5
         else:
-            attack_offset = (1.0 - attack_phase) * 10
+            attack_offset = (1.0 - attack_phase) * 5
 
     # climbing: 攀爬姿态 (双臂上举，身体垂直)
     if state == "climbing":
         climb_phase = (anim_frame % 16) / 16.0
-        climb_offset = _math.sin(climb_phase * _math.pi * 2) * 2.0
+        climb_offset = _math.sin(climb_phase * _math.pi * 2) * 1.0
 
     # fleeing: 逃跑姿态 (身体前倾)
     flee_offset = 0.0
     if state == "fleeing":
-        flee_offset = 4.0
+        flee_offset = 2.0
 
     # building: 建造姿态 (手臂在身前)
     build_offset = 0.0
     if state == "building":
         build_phase = (anim_frame % 20) / 20.0
-        build_offset = _math.sin(build_phase * _math.pi) * 3.0
+        build_offset = _math.sin(build_phase * _math.pi) * 1.5
 
     # crafting: 制作姿态 (手臂小幅动作)
     craft_offset = 0.0
     if state == "crafting":
         craft_phase = (anim_frame % 24) / 24.0
-        craft_offset = _math.sin(craft_phase * _math.pi * 2) * 1.5
+        craft_offset = _math.sin(craft_phase * _math.pi * 2) * 0.75
 
     # dying: 倒下动画
     dying_fall = 0.0
     if state == "dying":
-        dying_fall = min(20.0, (anim_frame % 20) * 1.0)
+        dying_fall = min(10.0, (anim_frame % 20) * 0.5)
 
     # carrying: 搬运姿态 (手臂下垂)
     carry_offset = 0.0
     if state == "carrying":
-        carry_offset = 2.0
+        carry_offset = 1.0
 
     # 身体 (带各状态偏移)
     body_shift_y = 0.0
@@ -627,10 +627,10 @@ def draw_stickman(
     # 腿
     if state == "dying":
         # 倒下: 腿水平伸展
-        left_leg_end_x = fx - 10 * dir_sign
-        left_leg_end_y = body_bottom_y + breath_offset + body_shift_y + 8
-        right_leg_end_x = fx + 2 * dir_sign
-        right_leg_end_y = body_bottom_y + breath_offset + body_shift_y + 6
+        left_leg_end_x = fx - 5 * dir_sign
+        left_leg_end_y = body_bottom_y + breath_offset + body_shift_y + 4
+        right_leg_end_x = fx + 1 * dir_sign
+        right_leg_end_y = body_bottom_y + breath_offset + body_shift_y + 3
         draw_line(
             buffer, fx, body_bottom_y + breath_offset + body_shift_y,
             left_leg_end_x, left_leg_end_y, faction_color, line_width
@@ -640,8 +640,8 @@ def draw_stickman(
             right_leg_end_x, right_leg_end_y, faction_color, line_width
         )
     else:
-        left_leg_end_x = fx - 6 * dir_sign + walk_swing * dir_sign
-        right_leg_end_x = fx + 6 * dir_sign - walk_swing * dir_sign
+        left_leg_end_x = fx - 3 * dir_sign + walk_swing * dir_sign
+        right_leg_end_x = fx + 3 * dir_sign - walk_swing * dir_sign
         draw_line(
             buffer, fx, body_bottom_y + breath_offset + body_shift_y,
             left_leg_end_x, fy, faction_color, line_width
@@ -654,10 +654,10 @@ def draw_stickman(
     # 手臂
     if state == "climbing":
         # 攀爬: 双手上举
-        left_arm_x = fx - 4
-        left_arm_y = body_top_y + breath_offset - 6 + climb_offset
-        right_arm_x = fx + 4
-        right_arm_y = body_top_y + breath_offset - 6 - climb_offset
+        left_arm_x = fx - 2
+        left_arm_y = body_top_y + breath_offset - 3 + climb_offset
+        right_arm_x = fx + 2
+        right_arm_y = body_top_y + breath_offset - 3 - climb_offset
         draw_line(
             buffer, fx, arm_root_y + breath_offset, left_arm_x, left_arm_y, faction_color, line_width
         )
@@ -666,10 +666,10 @@ def draw_stickman(
         )
     elif state == "building":
         # 建造: 手臂在身前水平
-        left_arm_x = fx - 8 * dir_sign + build_offset
-        left_arm_y = arm_root_y + 4 + breath_offset
-        right_arm_x = fx + 3 * dir_sign - build_offset
-        right_arm_y = arm_root_y + 4 + breath_offset
+        left_arm_x = fx - 4 * dir_sign + build_offset
+        left_arm_y = arm_root_y + 2 + breath_offset
+        right_arm_x = fx + 1.5 * dir_sign - build_offset
+        right_arm_y = arm_root_y + 2 + breath_offset
         draw_line(
             buffer, fx, arm_root_y + breath_offset, left_arm_x, left_arm_y, faction_color, line_width
         )
@@ -678,10 +678,10 @@ def draw_stickman(
         )
     elif state == "crafting":
         # 制作: 双手小幅动作
-        left_arm_x = fx - 6 + craft_offset
-        left_arm_y = arm_root_y + 6 + breath_offset
-        right_arm_x = fx + 6 - craft_offset
-        right_arm_y = arm_root_y + 6 + breath_offset
+        left_arm_x = fx - 3 + craft_offset
+        left_arm_y = arm_root_y + 3 + breath_offset
+        right_arm_x = fx + 3 - craft_offset
+        right_arm_y = arm_root_y + 3 + breath_offset
         draw_line(
             buffer, fx, arm_root_y + breath_offset, left_arm_x, left_arm_y, faction_color, line_width
         )
@@ -690,10 +690,10 @@ def draw_stickman(
         )
     elif state == "carrying":
         # 搬运: 手臂自然下垂
-        left_arm_x = fx - 6
-        left_arm_y = arm_root_y + 10 + breath_offset
-        right_arm_x = fx + 6
-        right_arm_y = arm_root_y + 10 + breath_offset
+        left_arm_x = fx - 3
+        left_arm_y = arm_root_y + 5 + breath_offset
+        right_arm_x = fx + 3
+        right_arm_y = arm_root_y + 5 + breath_offset
         draw_line(
             buffer, fx, arm_root_y + breath_offset, left_arm_x, left_arm_y, faction_color, line_width
         )
@@ -702,10 +702,10 @@ def draw_stickman(
         )
     elif state == "dying":
         # 倒下: 手臂平放
-        left_arm_x = fx - 8 * dir_sign
-        left_arm_y = arm_root_y + breath_offset + body_shift_y + 6
-        right_arm_x = fx - 2 * dir_sign
-        right_arm_y = arm_root_y + breath_offset + body_shift_y + 4
+        left_arm_x = fx - 4 * dir_sign
+        left_arm_y = arm_root_y + breath_offset + body_shift_y + 3
+        right_arm_x = fx - 1 * dir_sign
+        right_arm_y = arm_root_y + breath_offset + body_shift_y + 2
         draw_line(
             buffer, fx, arm_root_y + breath_offset + body_shift_y,
             left_arm_x, left_arm_y, faction_color, line_width
@@ -715,24 +715,24 @@ def draw_stickman(
             right_arm_x, right_arm_y, faction_color, line_width
         )
     else:
-        left_arm_x = fx - 8 + (-walk_swing if state == "walking" else 0)
-        right_arm_x = fx + 8 + (walk_swing if state == "walking" else 0)
-        left_arm_y = arm_root_y + 8 + breath_offset
-        right_arm_y = arm_root_y + 8 + breath_offset
+        left_arm_x = fx - 4 + (-walk_swing if state == "walking" else 0)
+        right_arm_x = fx + 4 + (walk_swing if state == "walking" else 0)
+        left_arm_y = arm_root_y + 4 + breath_offset
+        right_arm_y = arm_root_y + 4 + breath_offset
 
         if state == "mining":
-            right_arm_y = arm_root_y + 12
-            right_arm_x = fx + 4
+            right_arm_y = arm_root_y + 6
+            right_arm_x = fx + 2
 
         if state == "attacking" or state == "fighting":
-            right_arm_x = fx + 8 + attack_offset * dir_sign
-            right_arm_y = arm_root_y + 4
+            right_arm_x = fx + 4 + attack_offset * dir_sign
+            right_arm_y = arm_root_y + 2
 
         if state == "fleeing":
-            left_arm_x = fx - 9 * dir_sign
-            left_arm_y = arm_root_y + 4 + breath_offset
-            right_arm_x = fx + 9 * -dir_sign
-            right_arm_y = arm_root_y + 4 + breath_offset
+            left_arm_x = fx - 4.5 * dir_sign
+            left_arm_y = arm_root_y + 2 + breath_offset
+            right_arm_x = fx + 4.5 * -dir_sign
+            right_arm_y = arm_root_y + 2 + breath_offset
 
         draw_line(
             buffer, fx, arm_root_y + breath_offset, left_arm_x, left_arm_y, faction_color, line_width
@@ -757,26 +757,26 @@ def draw_stickman(
         wp_ext_x = wp_x + weapon_length * dir_sign
 
         if weapon_type == "spear":
-            draw_line(buffer, wp_x, wp_y, wp_ext_x, wp_y - 2, faction_color, line_width)
+            draw_line(buffer, wp_x, wp_y, wp_ext_x, wp_y - 1, faction_color, line_width)
             # 尖端小三角
             draw_line(
-                buffer, wp_ext_x, wp_y - 2, wp_ext_x + 3 * dir_sign, wp_y - 2, faction_color, 1
+                buffer, wp_ext_x, wp_y - 1, wp_ext_x + 1.5 * dir_sign, wp_y - 1, faction_color, 1
             )
         elif weapon_type == "sword":
             draw_line(buffer, wp_x, wp_y, wp_ext_x, wp_y, faction_color, line_width)
             # 护手横线
             guard_x = wp_x + weapon_length * 0.3 * dir_sign
             draw_line(
-                buffer, guard_x, wp_y - 3, guard_x, wp_y + 3, faction_color, 1
+                buffer, guard_x, wp_y - 1.5, guard_x, wp_y + 1.5, faction_color, 1
             )
         elif weapon_type == "shield":
             draw_circle(
                 buffer,
-                fx - 12 * dir_sign,
-                arm_root_y + 6 + breath_offset,
-                5,
+                fx - 6 * dir_sign,
+                arm_root_y + 3 + breath_offset,
+                2.5,
                 faction_color,
-                2,
+                1,
             )
         elif weapon_type == "fist":
             pass  # 徒手无附加

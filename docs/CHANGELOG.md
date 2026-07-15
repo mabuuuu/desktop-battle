@@ -103,3 +103,26 @@
 - `src/main.py` — 完整启动流程
 - `src/ui/tray.py` — 面板/设置联动
 - `src/render/sprite.py` — 全状态动画
+
+---
+
+## [2026-07-15] - 全局尺寸缩小 (0.5x)
+
+### 变更原因
+火柴人高度从40px缩小到20px，所有单位和建筑等比缩小0.5倍
+
+### 代码变更
+- `src/core/config.py` — stickman_height 40→20, stickman_line_width 2→1, stickman_head_radius 4→2, unit_radius 4→2, unit_perception_range 200→100, building_spacing 20→10
+- `src/combat/weapon.py` — attack_range全部÷2 (徒手20→10, 长矛45→22, 剑30→15, 盾15→8), visual_length全部÷2
+- `src/combat/attack.py` — 默认徒手范围 20→10
+- `src/behavior/conditions.py` — 默认徒手范围 20→10
+- `src/entity/unit.py` — 默认perception_range 200→100, 血条宽度20→10, 血条高度3→2, 资源标记圆r=3→1.5
+- `src/entity/building.py` — 工具台width 30→15 height 20→10, 兵营width 40→20 height 30→15
+- `src/render/sprite.py` — draw_stickman所有偏移量÷2 (body/body_top/head/arm_root/leg/arm端点/动画偏移量全部缩放)
+
+### 文档变更
+- `docs/TECHNICAL_SPEC.md` — 火柴人绘制规格更新, 单位r=2, 资源点r=4
+- `docs/UNIT_DESIGN.md` — 火柴人结构20px, 体型半径2px, 感知100px, 攻击10px, 盾r=2.5
+- `docs/WEAPON_DESIGN.md` — 全部武器攻击范围÷2, 视觉长度÷2, 盾r=2.5
+- `docs/BUILDING_DESIGN.md` — 采集点10x8, 工具台15x10, 兵营20x15, 防御塔10x25
+- `docs/PHYSICS_DESIGN.md` — 碰撞体半径2px
