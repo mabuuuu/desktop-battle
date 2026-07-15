@@ -34,6 +34,7 @@ class UnitState(str, Enum):
     BUILDING = "building"
     DYING = "dying"
     CARRYING = "carrying"
+    ARGUING = "arguing"
 
 
 @dataclass

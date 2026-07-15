@@ -253,3 +253,71 @@ def log_climb_end(unit: Unit) -> None:
         unit.faction_name,
         unit.unit_id,
     )
+
+
+# ── 阵营分裂日志 ──
+
+
+def log_schism(
+    original_name: str,
+    rebel_name: str,
+    split_count: int,
+    remaining_count: int,
+) -> None:
+    """记录阵营分裂事件."""
+    logger.bind(channel="behavior").info(
+        "SCHISM | {} → {} | Split: {} units | Remaining: {} units",
+        original_name,
+        rebel_name,
+        split_count,
+        remaining_count,
+    )
+
+
+def log_schism_resource_grab(
+    rebel_name: str,
+    resource_type: str,
+    success: bool,
+) -> None:
+    """记录资源点争夺结果."""
+    result = "SUCCESS" if success else "FAILED"
+    logger.bind(channel="behavior").info(
+        "ResourceGrab | {} | {} | {}",
+        rebel_name,
+        resource_type,
+        result,
+    )
+
+
+def log_conflict_accumulate(
+    faction_name: str,
+    conflict_score: float,
+    alive_count: int,
+) -> None:
+    """记录矛盾值积累."""
+    logger.bind(channel="behavior").debug(
+        "ConflictAccumulate | {} | Score: {:.1f}/100 | Units: {}",
+        faction_name,
+        conflict_score,
+        alive_count,
+    )
+
+
+def log_argue(unit_id: int, faction_name: str, conflict: float) -> None:
+    """记录争吵事件."""
+    logger.bind(channel="behavior").debug(
+        "Argue | {}[{}] | Conflict: {:.1f}",
+        faction_name,
+        unit_id,
+        conflict,
+    )
+
+
+def log_skirmish(unit_id: int, faction_name: str, conflict: float) -> None:
+    """记录小冲突事件."""
+    logger.bind(channel="behavior").debug(
+        "Skirmish | {}[{}] | Conflict: {:.1f}",
+        faction_name,
+        unit_id,
+        conflict,
+    )

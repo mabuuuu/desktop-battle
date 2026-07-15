@@ -44,6 +44,12 @@ class Faction:
     # ── 策略 ──
     current_strategy: str = "expand"
 
+    # ── 分裂机制 ──
+    conflict_score: float = 0.0  # 矛盾值 0~100
+    schism_cooldown: float = 0.0  # 分裂冷却计时(秒)
+    is_rebel: bool = False  # 是否为叛军阵营
+    parent_faction_name: str = ""  # 叛军的原阵营名
+
     @property
     def name(self) -> str:
         return self.config.name

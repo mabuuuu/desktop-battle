@@ -22,6 +22,29 @@ class AIConfig(BaseModel):
     timeout: float = Field(default=10.0, description="请求超时(秒)")
 
 
+class SchismConfig(BaseModel):
+    """阵营分裂机制配置."""
+
+    enabled: bool = Field(default=True, description="是否启用分裂机制")
+    trigger_population: int = Field(default=15, description="触发矛盾积累的人口阈值")
+    conflict_accumulate_interval: float = Field(default=5.0, description="矛盾积累间隔(秒)")
+    conflict_base_rate: float = Field(default=1.0, description="每次基础矛盾增量")
+    conflict_population_bonus: float = Field(default=0.5, description="每超1人额外增量")
+    conflict_max: float = Field(default=100.0, description="矛盾值上限")
+    schism_threshold: float = Field(default=80.0, description="分裂触发矛盾值")
+    argue_threshold: float = Field(default=30.0, description="争吵触发矛盾值")
+    skirmish_threshold: float = Field(default=60.0, description="小冲突触发矛盾值")
+    argue_probability_per_second: float = Field(default=0.002, description="每秒每单位争吵概率系数")
+    skirmish_probability_per_second: float = Field(default=0.005, description="每秒每单位小冲突概率系数")
+    argue_duration_range: tuple[float, float] = Field(default=(1.0, 2.0), description="争吵持续秒数范围")
+    skirmish_knockback: float = Field(default=20.0, description="小冲突击退力")
+    resource_grab_probability: float = Field(default=0.6, description="资源点争夺成功概率")
+    schism_cooldown: float = Field(default=120.0, description="分裂后冷却时间(秒)")
+    split_ratio_range: tuple[float, float] = Field(default=(0.25, 0.50), description="分裂人数比例范围")
+    rebel_initial_wood: int = Field(default=10, description="叛军初始木材")
+    rebel_initial_ore: int = Field(default=5, description="叛军初始矿石")
+
+
 class FactionConfig(BaseModel):
     """阵营配置."""
 
@@ -125,6 +148,9 @@ class GameConfig(BaseModel):
 
     # ── AI ──
     ai: AIConfig = Field(default_factory=AIConfig, description="AI配置")
+
+    # ── 分裂 ──
+    schism: SchismConfig = Field(default_factory=SchismConfig, description="分裂机制配置")
 
     @staticmethod
     def hex_to_rgba(hex_color: str, alpha: int = 255) -> tuple[int, int, int, int]:

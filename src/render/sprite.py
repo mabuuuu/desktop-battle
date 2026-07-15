@@ -605,6 +605,11 @@ def draw_stickman(
     if state == "carrying":
         carry_offset = 1.0
 
+    # arguing: 争吵姿态 (面对面对峙)
+    argue_offset = 0.0
+    if state == "arguing":
+        argue_offset = 1.5
+
     # 身体 (带各状态偏移)
     body_shift_y = 0.0
     if state == "fighting":
@@ -613,6 +618,8 @@ def draw_stickman(
         body_shift_y = flee_offset
     elif state == "dying":
         body_shift_y = dying_fall
+    elif state == "arguing":
+        body_shift_y = argue_offset
 
     draw_line(
         buffer,
@@ -714,6 +721,20 @@ def draw_stickman(
             buffer, fx, arm_root_y + breath_offset + body_shift_y,
             right_arm_x, right_arm_y, faction_color, line_width
         )
+    elif state == "arguing":
+        # 争吵: 手臂向前伸出（指对方）
+        left_arm_x = fx - 2 * dir_sign
+        left_arm_y = arm_root_y + 2 + breath_offset + body_shift_y
+        right_arm_x = fx + 6 * dir_sign
+        right_arm_y = arm_root_y + breath_offset + body_shift_y
+        draw_line(
+            buffer, fx, arm_root_y + breath_offset + body_shift_y,
+            left_arm_x, left_arm_y, faction_color, line_width
+        )
+        draw_line(
+            buffer, fx, arm_root_y + breath_offset + body_shift_y,
+            right_arm_x, right_arm_y, faction_color, line_width
+        )
     else:
         left_arm_x = fx - 4 + (-walk_swing if state == "walking" else 0)
         right_arm_x = fx + 4 + (walk_swing if state == "walking" else 0)
@@ -748,6 +769,13 @@ def draw_stickman(
     elif state == "dying":
         head_shift_y = dying_fall
     draw_circle(buffer, fx, head_y + breath_offset + head_shift_y, head_radius, secondary_color)
+
+    # 争吵气泡 (红色感叹号)
+    if state == "arguing":
+        bubble_y = head_y + breath_offset + head_shift_y - 5
+        # 感叹号: 竖线 + 下圆点
+        draw_line(buffer, fx, bubble_y - 2, fx, bubble_y + 1, (255, 60, 60, 255), 1)
+        draw_circle(buffer, fx, bubble_y + 2.5, 0.5, (255, 60, 60, 255), 0)
 
     # 武器绘制（附加在右臂末端）
     if weapon_visual is not None:

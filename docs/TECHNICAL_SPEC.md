@@ -96,7 +96,8 @@ src/
 │   ├── building.py          # 建筑实体
 │   ├── resource_node.py     # 资源采集点
 │   ├── projectile.py        # 投射物
-│   └── faction.py           # 阵营管理
+│   ├── faction.py           # 阵营管理
+│   └── schism.py            # 阵营分裂管理器
 ├── behavior/
 │   ├── trees.py             # 行为树定义
 │   ├── actions.py           # 行为树动作节点

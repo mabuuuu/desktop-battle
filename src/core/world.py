@@ -2,7 +2,7 @@
 
 管理所有阵营、单位、建筑、资源节点、物理引擎。
 提供完整的游戏初始化和每帧更新。
-集成: 行为树AI, 战斗系统, 攀爬物理, 视觉效果, 日志, AI策略。
+集成: 行为树AI, 战斗系统, 攀爬物理, 视觉效果, 日志, AI策略, 阵营分裂。
 """
 
 from __future__ import annotations
@@ -28,6 +28,7 @@ from src.desktop.window_scanner import (
 from src.entity.building import BUILDING_SPECS, Building
 from src.entity.faction import Faction
 from src.entity.resource_node import ResourceNode
+from src.entity.schism import SchismManager
 from src.entity.unit import Unit, UnitState
 from src.physics.body_factory import create_terrain_segment
 from src.physics.engine import CollisionType, PhysicsEngine
@@ -103,6 +104,9 @@ class World:
         # ── Phase 12: AI 策略 ──
         self._ai_manager: AIStrategyManager | None = None
         self._damage_multiplier: float = 1.0
+
+        # ── Phase 14: 阵营分裂 ──
+        self.schism_manager: SchismManager = SchismManager(self)
 
         # 初始化碰撞回调
         self._setup_collision_handlers()
@@ -494,6 +498,10 @@ class World:
 
         # 清理死亡单位
         self._cleanup_dead_units()
+
+        # ── 阵营分裂机制 ──
+        self.schism_manager.update(dt)
+        self.schism_manager.update_arguing_units(dt)
 
         # 更新面板
         if self._panel is not None:

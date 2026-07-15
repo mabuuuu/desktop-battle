@@ -126,3 +126,15 @@
 - `docs/WEAPON_DESIGN.md` — 全部武器攻击范围÷2, 视觉长度÷2, 盾r=2.5
 - `docs/BUILDING_DESIGN.md` — 采集点10x8, 工具台15x10, 兵营20x15, 防御塔10x25
 - `docs/PHYSICS_DESIGN.md` — 碰撞体半径2px
+
+---
+
+## [2026-07-15] - 新增阵营分裂机制
+
+### 文档新增
+- `docs/SCHISM_DESIGN.md` — 阵营分裂机制完整设计（触发条件/矛盾积累/争吵行为/分裂过程/叛军阵营/资源点争夺/分裂冷却/日志格式）
+
+### 文档更新
+- `docs/UNIT_DESIGN.md` — 新增叛军阵营外观颜色（红方·叛军#44FFEE青色, 蓝方·叛军#FFAA44橙色）
+- `docs/TECHNICAL_SPEC.md` — 新增src/entity/schism.py模块
+- `docs/PLAN.md` — 新增Phase 14阵营分裂机制
