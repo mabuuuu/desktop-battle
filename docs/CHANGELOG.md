@@ -28,3 +28,12 @@
 - 创建项目目录结构 `src/`
 - 创建 `requirements.txt`
 - 创建 `.gitignore`
+
+---
+
+## [2026-07-15] - 需求补充：托盘图标 + 信息面板
+
+### 文档更新
+- 更新 `PROJECT_OVERVIEW.md` — V1范围增加托盘图标、右键菜单、信息面板、设置对话框
+- 更新 `TECHNICAL_SPEC.md` — 新增 `infi.systray` 依赖、UI Layer 架构图、`src/ui/` 模块（tray/panel/settings）、系统托盘详细设计、信息面板布局与交互、设置对话框规格
+- 更新 `PLAN.md` — Phase 1 增加托盘图标，Phase 11 增加面板和设置

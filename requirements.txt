@@ -5,6 +5,7 @@ pymunk>=6.4
 py_trees>=2.2
 loguru>=0.7
 pydantic>=2.0
+infi.systray>=0.1
 
 # Render
 transparent-overlay
