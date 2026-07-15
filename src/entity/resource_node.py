@@ -74,34 +74,19 @@ class ResourceNode:
 
     def render(self, buffer: np.ndarray, screen_height: int) -> None:
         """渲染采集点."""
-        from src.render.sprite import draw_building, draw_resource_glow
+        from src.render.sprite import draw_circle, draw_line
 
         sx, sy = self.screen_position(screen_height)
-        half = self.size // 2
 
-        # 绘制菱形 + 发光
-        draw_building(
-            buffer,
-            sx - half,
-            sy - half,
-            self.size,
-            self.size,
-            self._rgba_color,
-            "resource",
-        )
-        # 资源类型标记：箭头/文字
-        from src.render.sprite import draw_text
-
-        label = "W" if self.resource_type == "wood" else "O"
-        label_color = (255, 255, 255, 200)
-        draw_text(buffer, sx - 3, sy - 4, label, label_color, font_size=10)
-
-        # 发光效果
-        draw_resource_glow(
-            buffer,
-            sx - half - 4,
-            sy - half - 4,
-            self.size + 8,
-            self._rgba_color,
-            self.glow_phase,
-        )
+        # 采集点: 圆底 + 竖线(树干/矿柱) + 顶部标记
+        color = self._rgba_color
+        if self.resource_type == "wood":
+            # 木材: 小树形状 (竖线+顶部横线)
+            draw_line(buffer, sx, sy, sx, sy - 8, color, 1)       # 树干
+            draw_line(buffer, sx - 3, sy - 6, sx + 3, sy - 6, color, 1)  # 树冠1
+            draw_line(buffer, sx - 2, sy - 8, sx + 2, sy - 8, color, 1)  # 树冠2
+        else:
+            # 矿石: 三角形堆
+            draw_line(buffer, sx, sy - 8, sx - 3, sy, color, 1)
+            draw_line(buffer, sx, sy - 8, sx + 3, sy, color, 1)
+            draw_line(buffer, sx - 3, sy, sx + 3, sy, color, 1)

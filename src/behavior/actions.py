@@ -20,9 +20,17 @@ if TYPE_CHECKING:
 
 def _get_unit_and_world(bb: py_trees.blackboard.Blackboard) -> tuple[Unit | None, World | None]:
     """从黑板获取 unit 和 world."""
-    unit = bb.get("unit")
-    world = bb.get("world")
+    unit = _bb_safe_get(bb, "unit")
+    world = _bb_safe_get(bb, "world")
     return unit, world
+
+
+def _bb_safe_get(bb: py_trees.blackboard.Blackboard, key: str, default: object = None) -> object:
+    """安全获取黑板值 (py_trees v2 Blackboard.get 不支持默认参数)."""
+    try:
+        return bb.get(key)
+    except KeyError:
+        return default
 
 
 def _distance(ax: float, ay: float, bx: float, by: float) -> float:
@@ -42,7 +50,7 @@ class FleeToBase(py_trees.behaviour.Behaviour):
         super().__init__(name)
 
     def update(self) -> py_trees.common.Status:
-        bb = self.attach_blackboard_client().blackboard
+        bb = py_trees.blackboard.Blackboard()
         unit, world = _get_unit_and_world(bb)
         if unit is None or world is None or not unit.alive:
             return py_trees.common.Status.FAILURE
@@ -78,9 +86,9 @@ class ExecuteAttack(py_trees.behaviour.Behaviour):
         super().__init__(name)
 
     def update(self) -> py_trees.common.Status:
-        bb = self.attach_blackboard_client().blackboard
+        bb = py_trees.blackboard.Blackboard()
         unit, world = _get_unit_and_world(bb)
-        enemy = bb.get("nearest_enemy")
+        enemy = _bb_safe_get(bb,"nearest_enemy")
         if unit is None or world is None or enemy is None:
             return py_trees.common.Status.FAILURE
         if not enemy.alive:
@@ -120,9 +128,9 @@ class ChaseEnemy(py_trees.behaviour.Behaviour):
         super().__init__(name)
 
     def update(self) -> py_trees.common.Status:
-        bb = self.attach_blackboard_client().blackboard
+        bb = py_trees.blackboard.Blackboard()
         unit, world = _get_unit_and_world(bb)
-        enemy = bb.get("nearest_enemy")
+        enemy = _bb_safe_get(bb,"nearest_enemy")
         if unit is None or world is None or enemy is None:
             return py_trees.common.Status.FAILURE
         if not enemy.alive:
@@ -146,12 +154,12 @@ class MoveTowardEnemy(py_trees.behaviour.Behaviour):
         super().__init__(name)
 
     def update(self) -> py_trees.common.Status:
-        bb = self.attach_blackboard_client().blackboard
+        bb = py_trees.blackboard.Blackboard()
         unit, world = _get_unit_and_world(bb)
         if unit is None or world is None or not unit.alive:
             return py_trees.common.Status.FAILURE
 
-        faction_bb = bb.get("faction_bb")
+        faction_bb = _bb_safe_get(bb,"faction_bb")
         target_x = 0.0
         s_width = world.screen_width
         if unit.faction_name == world.factions[0].name:
@@ -184,9 +192,9 @@ class MoveToBuildSite(py_trees.behaviour.Behaviour):
         super().__init__(name)
 
     def update(self) -> py_trees.common.Status:
-        bb = self.attach_blackboard_client().blackboard
+        bb = py_trees.blackboard.Blackboard()
         unit, world = _get_unit_and_world(bb)
-        build_order = bb.get("current_build_order")
+        build_order = _bb_safe_get(bb,"current_build_order")
         if unit is None or world is None or build_order is None:
             return py_trees.common.Status.FAILURE
 
@@ -215,9 +223,9 @@ class Build(py_trees.behaviour.Behaviour):
         super().__init__(name)
 
     def update(self) -> py_trees.common.Status:
-        bb = self.attach_blackboard_client().blackboard
+        bb = py_trees.blackboard.Blackboard()
         unit, world = _get_unit_and_world(bb)
-        build_order = bb.get("current_build_order")
+        build_order = _bb_safe_get(bb,"current_build_order")
         if unit is None or world is None or build_order is None:
             return py_trees.common.Status.FAILURE
 
@@ -244,7 +252,7 @@ class Build(py_trees.behaviour.Behaviour):
                 faction.buildings_built += 1
             unit.build_progress = 0.0
             # 从订单列表移除
-            bb_orders = bb.get("faction_bb")
+            bb_orders = _bb_safe_get(bb,"faction_bb")
             if bb_orders is not None:
                 bb_orders.build_orders = [
                     o for o in bb_orders.build_orders if o != build_order
@@ -268,9 +276,9 @@ class CraftWeapon(py_trees.behaviour.Behaviour):
         super().__init__(name)
 
     def update(self) -> py_trees.common.Status:
-        bb = self.attach_blackboard_client().blackboard
+        bb = py_trees.blackboard.Blackboard()
         unit, world = _get_unit_and_world(bb)
-        craft_order = bb.get("current_craft_order")
+        craft_order = _bb_safe_get(bb,"current_craft_order")
         if unit is None or world is None or craft_order is None:
             return py_trees.common.Status.FAILURE
 
@@ -294,7 +302,7 @@ class CraftWeapon(py_trees.behaviour.Behaviour):
         if job is not None:
             # 等待制作完成
             if job.done:
-                bb_orders = bb.get("faction_bb")
+                bb_orders = _bb_safe_get(bb,"faction_bb")
                 if bb_orders is not None:
                     bb_orders.craft_orders = [
                         o for o in bb_orders.craft_orders if o != craft_order
@@ -317,7 +325,7 @@ class MoveToBase(py_trees.behaviour.Behaviour):
         super().__init__(name)
 
     def update(self) -> py_trees.common.Status:
-        bb = self.attach_blackboard_client().blackboard
+        bb = py_trees.blackboard.Blackboard()
         unit, world = _get_unit_and_world(bb)
         if unit is None or world is None or not unit.alive:
             return py_trees.common.Status.FAILURE
@@ -350,7 +358,7 @@ class DepositResources(py_trees.behaviour.Behaviour):
         super().__init__(name)
 
     def update(self) -> py_trees.common.Status:
-        bb = self.attach_blackboard_client().blackboard
+        bb = py_trees.blackboard.Blackboard()
         unit, world = _get_unit_and_world(bb)
         if unit is None or world is None or not unit.alive:
             return py_trees.common.Status.FAILURE
@@ -377,7 +385,7 @@ class MoveToResourceNode(py_trees.behaviour.Behaviour):
         super().__init__(name)
 
     def update(self) -> py_trees.common.Status:
-        bb = self.attach_blackboard_client().blackboard
+        bb = py_trees.blackboard.Blackboard()
         unit, world = _get_unit_and_world(bb)
         if unit is None or world is None or not unit.alive:
             return py_trees.common.Status.FAILURE
@@ -411,9 +419,9 @@ class GatherResources(py_trees.behaviour.Behaviour):
         super().__init__(name)
 
     def update(self) -> py_trees.common.Status:
-        bb = self.attach_blackboard_client().blackboard
+        bb = py_trees.blackboard.Blackboard()
         unit, world = _get_unit_and_world(bb)
-        node = bb.get("target_resource_node")
+        node = _bb_safe_get(bb,"target_resource_node")
         if unit is None or world is None or node is None:
             return py_trees.common.Status.FAILURE
         if unit.carrying_full:
@@ -446,9 +454,9 @@ class MoveToWeapon(py_trees.behaviour.Behaviour):
         super().__init__(name)
 
     def update(self) -> py_trees.common.Status:
-        bb = self.attach_blackboard_client().blackboard
+        bb = py_trees.blackboard.Blackboard()
         unit, world = _get_unit_and_world(bb)
-        weapon = bb.get("nearest_weapon")
+        weapon = _bb_safe_get(bb,"nearest_weapon")
         if unit is None or world is None or weapon is None:
             return py_trees.common.Status.FAILURE
 
@@ -474,9 +482,9 @@ class EquipWeapon(py_trees.behaviour.Behaviour):
         super().__init__(name)
 
     def update(self) -> py_trees.common.Status:
-        bb = self.attach_blackboard_client().blackboard
+        bb = py_trees.blackboard.Blackboard()
         unit, world = _get_unit_and_world(bb)
-        weapon = bb.get("nearest_weapon")
+        weapon = _bb_safe_get(bb,"nearest_weapon")
         if unit is None or world is None or weapon is None:
             return py_trees.common.Status.FAILURE
 
@@ -500,12 +508,12 @@ class Wander(py_trees.behaviour.Behaviour):
         super().__init__(name)
 
     def update(self) -> py_trees.common.Status:
-        bb = self.attach_blackboard_client().blackboard
+        bb = py_trees.blackboard.Blackboard()
         unit, world = _get_unit_and_world(bb)
         if unit is None or world is None or not unit.alive:
             return py_trees.common.Status.FAILURE
 
-        wander_target = bb.get("wander_target_x")
+        wander_target = _bb_safe_get(bb,"wander_target_x")
         if wander_target is None:
             sx, sy = unit.screen_position(world.screen_height)
             wander_target = sx + random.uniform(-80, 80)

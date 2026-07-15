@@ -530,8 +530,8 @@ class World:
 
                 # Tick 行为树
                 bt.tick_once()
-            except Exception:
-                pass
+            except Exception as bt_err:
+                logger.debug("BT error for unit {}: {}", unit.unit_id, bt_err)
 
     def _update_climbing(self, dt: float) -> None:
         """更新攀爬系统."""

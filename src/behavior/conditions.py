@@ -17,10 +17,20 @@ if TYPE_CHECKING:
 
 def _get_unit_from_blackboard(blackboard: py_trees.blackboard.Blackboard) -> Unit | None:
     """从黑板获取 unit 引用."""
+    return _bb_get(blackboard, "unit")
+
+
+def _get_global_blackboard() -> py_trees.blackboard.Blackboard:
+    """获取全局黑板实例."""
+    return py_trees.blackboard.Blackboard()
+
+
+def _bb_get(bb: py_trees.blackboard.Blackboard, key: str, default: object = None) -> object:
+    """从黑板获取值，支持默认值 (py_trees v2 Blackboard.get 不支持默认参数)."""
     try:
-        return blackboard.get("unit")
-    except (KeyError, AttributeError):
-        return None
+        return bb.get(key)
+    except KeyError:
+        return default
 
 
 def _distance(ax: float, ay: float, bx: float, by: float) -> float:
@@ -40,10 +50,14 @@ class HPCheck(py_trees.behaviour.Behaviour):
         super().__init__(name)
 
     def update(self) -> py_trees.common.Status:
-        unit = _get_unit_from_blackboard(self.attach_blackboard_client().blackboard)
+        bb = _get_global_blackboard()
+        unit = _get_unit_from_blackboard(bb)
         if unit is None or not unit.alive:
             return py_trees.common.Status.FAILURE
-        threshold = self.attach_blackboard_client().blackboard.get("hp_threshold", 200.0)
+        try:
+            threshold = _bb_get(bb, "hp_threshold", 200.0)
+        except (KeyError, TypeError):
+            threshold = 200.0
         if unit.hp < threshold:
             return py_trees.common.Status.SUCCESS
         return py_trees.common.Status.FAILURE
@@ -61,9 +75,9 @@ class EnemyInSight(py_trees.behaviour.Behaviour):
         super().__init__(name)
 
     def update(self) -> py_trees.common.Status:
-        bb = self.attach_blackboard_client().blackboard
+        bb = _get_global_blackboard()
         unit = _get_unit_from_blackboard(bb)
-        world = bb.get("world")
+        world = _bb_get(bb,"world")
         if unit is None or world is None or not unit.alive:
             return py_trees.common.Status.FAILURE
 
@@ -91,10 +105,10 @@ class EnemyInAttackRange(py_trees.behaviour.Behaviour):
         super().__init__(name)
 
     def update(self) -> py_trees.common.Status:
-        bb = self.attach_blackboard_client().blackboard
+        bb = _get_global_blackboard()
         unit = _get_unit_from_blackboard(bb)
-        enemy = bb.get("nearest_enemy")
-        world = bb.get("world")
+        enemy = _bb_get(bb,"nearest_enemy")
+        world = _bb_get(bb,"world")
         if unit is None or enemy is None or world is None:
             return py_trees.common.Status.FAILURE
         if not enemy.alive:
@@ -126,9 +140,9 @@ class HasBuildOrder(py_trees.behaviour.Behaviour):
         super().__init__(name)
 
     def update(self) -> py_trees.common.Status:
-        bb = self.attach_blackboard_client().blackboard
+        bb = _get_global_blackboard()
         unit = _get_unit_from_blackboard(bb)
-        faction_bb = bb.get("faction_bb")
+        faction_bb = _bb_get(bb,"faction_bb")
         if unit is None or faction_bb is None:
             return py_trees.common.Status.FAILURE
         order = faction_bb.get_next_build_order(unit.unit_id)
@@ -150,9 +164,9 @@ class HasCraftOrder(py_trees.behaviour.Behaviour):
         super().__init__(name)
 
     def update(self) -> py_trees.common.Status:
-        bb = self.attach_blackboard_client().blackboard
+        bb = _get_global_blackboard()
         unit = _get_unit_from_blackboard(bb)
-        faction_bb = bb.get("faction_bb")
+        faction_bb = _bb_get(bb,"faction_bb")
         if unit is None or faction_bb is None:
             return py_trees.common.Status.FAILURE
         order = faction_bb.get_next_craft_order(unit.unit_id)
@@ -175,10 +189,10 @@ class AtWorkbench(py_trees.behaviour.Behaviour):
         super().__init__(name)
 
     def update(self) -> py_trees.common.Status:
-        bb = self.attach_blackboard_client().blackboard
+        bb = _get_global_blackboard()
         unit = _get_unit_from_blackboard(bb)
-        world = bb.get("world")
-        craft_order = bb.get("current_craft_order")
+        world = _bb_get(bb,"world")
+        craft_order = _bb_get(bb,"current_craft_order")
         if unit is None or world is None or craft_order is None:
             return py_trees.common.Status.FAILURE
 
@@ -203,7 +217,7 @@ class CarryingResources(py_trees.behaviour.Behaviour):
         super().__init__(name)
 
     def update(self) -> py_trees.common.Status:
-        unit = _get_unit_from_blackboard(self.attach_blackboard_client().blackboard)
+        unit = _get_unit_from_blackboard(_get_global_blackboard())
         if unit is None:
             return py_trees.common.Status.FAILURE
         if unit.total_carried > 0:
@@ -222,7 +236,7 @@ class NeedResources(py_trees.behaviour.Behaviour):
         super().__init__(name)
 
     def update(self) -> py_trees.common.Status:
-        unit = _get_unit_from_blackboard(self.attach_blackboard_client().blackboard)
+        unit = _get_unit_from_blackboard(_get_global_blackboard())
         if unit is None:
             return py_trees.common.Status.FAILURE
         if not unit.carrying_full:
@@ -241,7 +255,7 @@ class NoWeaponEquipped(py_trees.behaviour.Behaviour):
         super().__init__(name)
 
     def update(self) -> py_trees.common.Status:
-        unit = _get_unit_from_blackboard(self.attach_blackboard_client().blackboard)
+        unit = _get_unit_from_blackboard(_get_global_blackboard())
         if unit is None:
             return py_trees.common.Status.FAILURE
         if unit.weapon is None:
@@ -261,9 +275,9 @@ class WeaponOnGround(py_trees.behaviour.Behaviour):
         super().__init__(name)
 
     def update(self) -> py_trees.common.Status:
-        bb = self.attach_blackboard_client().blackboard
+        bb = _get_global_blackboard()
         unit = _get_unit_from_blackboard(bb)
-        world = bb.get("world")
+        world = _bb_get(bb,"world")
         if unit is None or world is None:
             return py_trees.common.Status.FAILURE
 
