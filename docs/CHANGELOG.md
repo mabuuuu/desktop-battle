@@ -45,3 +45,61 @@
 ### 文档更新
 - 更新 `TECHNICAL_SPEC.md` — 新增 `httpx` 依赖、`src/ai/` 模块（client/strategy/prompts/strategy_log）、外部AI接入详细设计（架构/配置/提示词/执行流程/降级/策略日志）
 - 更新 `PLAN.md` — 新增 Phase 12 外部AI接入，原 Phase 12 整合调优顺延为 Phase 13
+
+---
+
+## [2026-07-15] - Phase 1-6 代码实现
+
+### 新增文件 (21个)
+- `src/core/config.py` — GameConfig/AIConfig/FactionConfig (Pydantic)
+- `src/core/game_loop.py` — 60fps主循环 (暂停/物理/行为/渲染调度)
+- `src/core/world.py` — 世界状态管理 (阵营/单位/建筑/资源/物理/渲染)
+- `src/render/overlay.py` — transparent-overlay封装 (透明/穿透/置顶)
+- `src/render/sprite.py` — numpy RGBA绘制 (线条/圆/矩形/文本/火柴人/血条)
+- `src/desktop/taskbar.py` — Win32任务栏位置检测
+- `src/desktop/coord.py` — pymunk↔屏幕坐标转换
+- `src/desktop/window_scanner.py` — EnumWindows→窗口平台物理体
+- `src/physics/engine.py` — pymunk Space封装 (碰撞类型1-7)
+- `src/physics/body_factory.py` — 物理体工厂
+- `src/physics/terrain.py` — 任务栏地面物理体
+- `src/entity/unit.py` — 单位实体 (HP1000/状态/移动/武器/渲染)
+- `src/entity/faction.py` — 阵营管理 (仓库/单位/建筑)
+- `src/entity/building.py` — 建筑实体 (工具台/兵营)
+- `src/entity/resource_node.py` — 资源采集点
+- `src/combat/weapon.py` — 武器定义 (徒手/长矛/剑/盾)
+- `src/economy/resource.py` — 资源管理
+- `src/economy/crafting.py` — 制作系统
+- `src/economy/production.py` — 兵营生产队列
+- `src/ui/tray.py` — 系统托盘+右键菜单
+- `src/main.py` — 入口
+
+---
+
+## [2026-07-15] - Phase 7-13 代码实现
+
+### 新增文件 (19个)
+- `src/behavior/blackboard.py` — FactionBlackboard (策略/订单/角色分配)
+- `src/behavior/conditions.py` — 10个py_trees条件节点
+- `src/behavior/actions.py` — 15个py_trees动作节点
+- `src/behavior/trees.py` — 9层优先级行为树
+- `src/combat/damage.py` — 伤害计算 (随机浮动/盾减伤/倍率)
+- `src/combat/attack.py` — 近战攻击执行
+- `src/render/effects.py` — 攻击闪光/死亡粒子/浮动伤害数字
+- `src/physics/climbing.py` — 攀爬物理 (KINEMATIC切换)
+- `src/game_logging/logger.py` — LogManager (loguru三通道)
+- `src/game_logging/behavior_log.py` — 行为日志
+- `src/game_logging/system_log.py` — 系统日志
+- `src/game_logging/error_log.py` — 错误日志
+- `src/ui/panel.py` — InfoPanel (双方参数/拖拽/关闭)
+- `src/ui/settings.py` — SettingsManager (持久化)
+- `src/ai/client.py` — AIClient (httpx, OpenAI兼容API)
+- `src/ai/prompts.py` — 内置提示词模板
+- `src/ai/strategy.py` — AIStrategyManager (15秒请求/降级)
+- `src/ai/strategy_log.py` — AI策略日志
+
+### 更新文件 (5个)
+- `src/core/world.py` — 集成行为树/攀爬/战斗/AI/面板/日志
+- `src/core/game_loop.py` — 行为树+日志集成
+- `src/main.py` — 完整启动流程
+- `src/ui/tray.py` — 面板/设置联动
+- `src/render/sprite.py` — 全状态动画
