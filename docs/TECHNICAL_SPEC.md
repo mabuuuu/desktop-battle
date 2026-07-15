@@ -14,6 +14,7 @@
 | 日志 | `loguru` | >=0.7 | 结构化日志（系统日志、错误日志） |
 | 配置 | `pydantic` | >=2.0 | 数据模型验证、配置管理 |
 | 托盘图标 | `infi.systray` | >=0.1 | Windows系统托盘图标 + 右键菜单 |
+| HTTP客户端 | `httpx` | >=0.27 | 外部AI API调用（OpenAI兼容接口） |
 
 ### 可选依赖（后期）
 
@@ -113,6 +114,11 @@ src/
 │   ├── tray.py              # 系统托盘图标 + 右键菜单
 │   ├── panel.py             # 信息面板（双方参数展示）
 │   └── settings.py          # 设置对话框
+├── ai/
+│   ├── client.py            # 外部AI客户端（OpenAI兼容API）
+│   ├── strategy.py          # AI策略解析与执行
+│   ├── prompts.py           # 内置提示词模板
+│   └── strategy_log.py      # AI策略日志
 └── logging/
     ├── logger.py            # 日志管理器
     ├── behavior_log.py      # 行为日志
@@ -364,3 +370,108 @@ Desktop Battle
 ### 设置持久化
 
 设置保存到 `%APPDATA%/DesktopBattle/settings.json`，启动时自动加载。
+
+## 外部AI接入模块
+
+### 概述
+
+外部AI模块允许通过 OpenAI 兼容 API 接入第三方大语言模型，为每个阵营提供高层战略决策。AI 不控制逐帧行为，而是每隔一定时间输出策略指令，由行为树执行。
+
+### 架构
+
+```
+┌─────────────────────────────────────────────┐
+│              AI Strategy Layer               │
+│                                              │
+│  ┌─────────────┐    ┌─────────────────────┐ │
+│  │ AI Client   │    │ Strategy Parser     │ │
+│  │ (httpx)     │───→│ (JSON → 指令)       │ │
+│  │ apiKey+url  │    │                     │ │
+│  └─────────────┘    └─────────┬───────────┘ │
+│                               │              │
+│  ┌─────────────┐              │              │
+│  │ Prompts     │              ▼              │
+│  │ (内置模板)  │    ┌─────────────────────┐ │
+│  └─────────────┘    │ Blackboard Writer   │ │
+│                     │ (写入阵营黑板)      │ │
+│                     └─────────────────────┘ │
+│                                              │
+│  ┌─────────────────────────────────────────┐ │
+│  │ Strategy Log (策略日志)                  │ │
+│  └─────────────────────────────────────────┘ │
+└─────────────────────────────────────────────┘
+```
+
+### AI客户端配置
+
+```python
+class AIConfig(BaseModel):
+    enabled: bool = False              # 是否启用AI策略
+    api_key: str = ""                  # API密钥
+    api_url: str = "https://api.openai.com/v1/chat/completions"  # API端点
+    model: str = "gpt-4o-mini"         # 模型名称
+    strategy_interval: float = 15.0    # 策略请求间隔(秒)
+    max_tokens: int = 500              # 单次请求最大token
+    temperature: float = 0.7           # 生成温度
+    timeout: float = 10.0              # 请求超时(秒)
+```
+
+### 提示词模板
+
+系统提示词（内置，可自定义）：
+
+```
+你是一个桌面火柴人战斗游戏的阵营指挥官。你控制{faction_name}阵营。
+
+当前战况：
+- 我方单位: {unit_count} (存活{alive}, 阵亡{dead})
+- 我方资源: 木材{wood}, 矿石{ore}
+- 我方建筑: {buildings}
+- 我方武器: {weapons}
+- 敌方单位: {enemy_count}
+- 敌方建筑: {enemy_buildings}
+- 当前策略: {current_strategy}
+- 单位分配: 采集{gatherers} 建造{builders} 战斗{soldiers} 探索{scouts}
+
+请输出JSON格式的策略指令：
+{
+  "strategy": "expand|defend|attack|retreat",
+  "priority": "economy|military|explore",
+  "build_order": "workbench_lv1|workbench_lv2|barracks|none",
+  "craft_order": "spear|sword|shield|none",
+  "gatherer_count": <number>,
+  "soldier_count": <number>,
+  "scout_count": <number>,
+  "reasoning": "<简短说明>"
+}
+```
+
+### 策略执行流程
+
+```
+1. 每15秒触发一次AI请求
+2. 收集阵营状态数据 → 填充提示词模板
+3. 调用API → 获取JSON策略响应
+4. 解析JSON → 写入阵营Blackboard
+5. 行为树在下次tick时读取新策略
+6. 记录策略日志
+```
+
+### 降级策略
+
+- AI请求失败 → 保持当前策略不变
+- 连续3次失败 → 切换为内置规则策略
+- AI响应格式错误 → 解析失败时保持当前策略
+- 超时 → 10秒超时，不阻塞主循环
+
+### AI策略日志
+
+| 事件 | 格式 |
+|------|------|
+| 请求发送 | `[AI:Red] Request sent | Model: gpt-4o-mini | Prompt tokens: ~200` |
+| 策略接收 | `[AI:Red] Strategy: attack | Priority: military | Build: barracks | Craft: sword | Reasoning: "敌弱我强，应主动进攻"` |
+| 请求失败 | `[AI:Red] Request failed: timeout | Fallback: keep current strategy` |
+| 策略切换 | `[AI:Red] Strategy changed: expand → attack | Reason: enemy spotted` |
+| 降级触发 | `[AI:Red] Fallback to rule-based | Consecutive failures: 3` |
+
+策略日志输出到 `logs/strategy/` 目录，保留7天。

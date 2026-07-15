@@ -252,7 +252,33 @@
 
 ---
 
-### Phase 12: 整合与调优
+### Phase 12: 外部AI接入
+
+**目标**：接入第三方AI API获取战斗策略
+
+**改动目标**：
+1. 实现 `src/ai/client.py` — OpenAI兼容API客户端（httpx异步调用）
+2. 实现 `src/ai/prompts.py` — 内置提示词模板（战况→策略JSON）
+3. 实现 `src/ai/strategy.py` — 策略解析与执行（JSON→Blackboard写入）
+4. 实现 `src/ai/strategy_log.py` — AI策略日志（请求/响应/降级/切换）
+5. 集成AI策略到阵营Blackboard（每15秒请求一次）
+6. 实现降级策略（连续失败→规则策略）
+7. 在设置对话框中增加AI配置项（apiKey/url/model/开关）
+8. 验证：配置AI后，阵营策略由AI驱动，策略日志可查
+
+**预计改动文件**：
+- `src/ai/client.py` (新建)
+- `src/ai/prompts.py` (新建)
+- `src/ai/strategy.py` (新建)
+- `src/ai/strategy_log.py` (新建)
+- `src/ai/__init__.py` (新建)
+- `src/ui/settings.py` (更新，AI配置项)
+- `src/core/config.py` (更新，AIConfig)
+- `src/behavior/blackboard.py` (更新，AI策略写入)
+
+---
+
+### Phase 13: 整合与调优
 
 **目标**：完整游戏循环运行，平衡性调优
 
