@@ -31,8 +31,8 @@ class GameLoop:
         self.paused: bool = False
         self.running: bool = False
         self.frame_count: int = 0
-        self.physics_engine: object | None = None  # PhysicsEngine (cyclic import)
-        self.world: object | None = None  # World (will be set later)
+        self.physics_engine: object | None = None
+        self.world: object | None = None
 
         # 帧率统计
         self._last_fps_report_time: float = 0.0
@@ -56,11 +56,24 @@ class GameLoop:
         )
         self._last_fps_report_time = time.time()
 
+        # 日志系统
+        try:
+            from src.game_logging.system_log import log_game_start
+            log_game_start(f"FPS={self.config.target_fps}")
+        except Exception:
+            pass
+
         try:
             self._run_loop()
         finally:
             self.running = False
-            logger.info("Engine shutdown | Runtime: {:.1f}s", time.time() - self._last_fps_report_time)
+            elapsed = time.time() - self._last_fps_report_time
+            logger.info("Engine shutdown | Runtime: {:.1f}s", elapsed)
+            try:
+                from src.game_logging.system_log import log_game_shutdown
+                log_game_shutdown(elapsed)
+            except Exception:
+                pass
 
     def stop(self) -> None:
         """停止主循环."""
@@ -83,17 +96,13 @@ class GameLoop:
             frame_start = time.time()
 
             if not self.paused:
-                dt = min(target_frame_time, 1.0 / 30.0)  # 防止螺旋
+                dt = min(target_frame_time, 1.0 / 30.0)
                 effective_dt = dt * self.config.game_speed
 
-                # 1. 物理更新
+                # 1. 物理+世界更新 (包含行为树、攀爬、AI)
                 self._update_physics(effective_dt)
 
-                # 2. 行为更新 (每 N 帧)
-                if self.frame_count % self.config.behavior_tick_interval == 0:
-                    self._update_behavior()
-
-                # 3. 渲染
+                # 2. 渲染
                 self._update_render()
 
                 self._fps_frame_count += 1
@@ -103,11 +112,13 @@ class GameLoop:
             elapsed = now - self._last_fps_report_time
             if elapsed >= 5.0 and self._fps_frame_count > 0:
                 self._current_fps = self._fps_frame_count / elapsed
-                logger.debug(
-                    "FPS: {:.0f} | Units: {}",
-                    self._current_fps,
-                    self._get_unit_count(),
-                )
+                unit_count = self._get_unit_count()
+                logger.debug("FPS: {:.0f} | Units: {}", self._current_fps, unit_count)
+                try:
+                    from src.game_logging.system_log import log_fps
+                    log_fps(self._current_fps, unit_count, self.frame_count)
+                except Exception:
+                    pass
                 self._last_fps_report_time = now
                 self._fps_frame_count = 0
 
@@ -120,21 +131,19 @@ class GameLoop:
             self.frame_count += 1
 
     def _update_physics(self, dt: float) -> None:
-        """更新游戏世界 (物理+逻辑)."""
+        """更新游戏世界 (物理+行为+逻辑)."""
         if self.world is not None:
             self.world.update(dt)  # type: ignore[union-attr]
 
     def _update_behavior(self) -> None:
-        """更新行为树 (占位)."""
-        if self.world is not None:
-            pass  # Phase 7+ 实现
+        """更新行为树 (已合并到 world.update 中)."""
+        pass
 
     def _update_render(self) -> None:
         """渲染所有实体."""
         if self._render_buffer is None:
             return
 
-        # 让 world 自行渲染
         if self.world is not None:
             self.world.render(self.overlay, self._render_buffer)  # type: ignore[union-attr]
 

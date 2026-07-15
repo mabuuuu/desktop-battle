@@ -563,50 +563,191 @@ def draw_stickman(
         else:
             attack_offset = (1.0 - attack_phase) * 12
 
-    # 身体
+    # fighting: 战斗姿态 (警戒，略微下蹲)
+    fight_stance = 0.0
+    if state == "fighting":
+        fight_stance = 3.0
+        attack_phase = (anim_frame % 15) / 15.0
+        if attack_phase < 0.5:
+            attack_offset = attack_phase * 10
+        else:
+            attack_offset = (1.0 - attack_phase) * 10
+
+    # climbing: 攀爬姿态 (双臂上举，身体垂直)
+    if state == "climbing":
+        climb_phase = (anim_frame % 16) / 16.0
+        climb_offset = _math.sin(climb_phase * _math.pi * 2) * 2.0
+
+    # fleeing: 逃跑姿态 (身体前倾)
+    flee_offset = 0.0
+    if state == "fleeing":
+        flee_offset = 4.0
+
+    # building: 建造姿态 (手臂在身前)
+    build_offset = 0.0
+    if state == "building":
+        build_phase = (anim_frame % 20) / 20.0
+        build_offset = _math.sin(build_phase * _math.pi) * 3.0
+
+    # crafting: 制作姿态 (手臂小幅动作)
+    craft_offset = 0.0
+    if state == "crafting":
+        craft_phase = (anim_frame % 24) / 24.0
+        craft_offset = _math.sin(craft_phase * _math.pi * 2) * 1.5
+
+    # dying: 倒下动画
+    dying_fall = 0.0
+    if state == "dying":
+        dying_fall = min(20.0, (anim_frame % 20) * 1.0)
+
+    # carrying: 搬运姿态 (手臂下垂)
+    carry_offset = 0.0
+    if state == "carrying":
+        carry_offset = 2.0
+
+    # 身体 (带各状态偏移)
+    body_shift_y = 0.0
+    if state == "fighting":
+        body_shift_y = fight_stance
+    elif state == "fleeing":
+        body_shift_y = flee_offset
+    elif state == "dying":
+        body_shift_y = dying_fall
+
     draw_line(
         buffer,
         fx,
-        body_top_y + breath_offset,
+        body_top_y + breath_offset + body_shift_y,
         fx,
-        body_bottom_y + breath_offset,
+        body_bottom_y + breath_offset + body_shift_y,
         faction_color,
         line_width,
     )
 
     # 腿
-    left_leg_end_x = fx - 6 * dir_sign + walk_swing * dir_sign
-    right_leg_end_x = fx + 6 * dir_sign - walk_swing * dir_sign
-    draw_line(
-        buffer, fx, body_bottom_y + breath_offset, left_leg_end_x, fy, faction_color, line_width
-    )
-    draw_line(
-        buffer, fx, body_bottom_y + breath_offset, right_leg_end_x, fy, faction_color, line_width
-    )
+    if state == "dying":
+        # 倒下: 腿水平伸展
+        left_leg_end_x = fx - 10 * dir_sign
+        left_leg_end_y = body_bottom_y + breath_offset + body_shift_y + 8
+        right_leg_end_x = fx + 2 * dir_sign
+        right_leg_end_y = body_bottom_y + breath_offset + body_shift_y + 6
+        draw_line(
+            buffer, fx, body_bottom_y + breath_offset + body_shift_y,
+            left_leg_end_x, left_leg_end_y, faction_color, line_width
+        )
+        draw_line(
+            buffer, fx, body_bottom_y + breath_offset + body_shift_y,
+            right_leg_end_x, right_leg_end_y, faction_color, line_width
+        )
+    else:
+        left_leg_end_x = fx - 6 * dir_sign + walk_swing * dir_sign
+        right_leg_end_x = fx + 6 * dir_sign - walk_swing * dir_sign
+        draw_line(
+            buffer, fx, body_bottom_y + breath_offset + body_shift_y,
+            left_leg_end_x, fy, faction_color, line_width
+        )
+        draw_line(
+            buffer, fx, body_bottom_y + breath_offset + body_shift_y,
+            right_leg_end_x, fy, faction_color, line_width
+        )
 
     # 手臂
-    left_arm_x = fx - 8 + (-walk_swing if state == "walking" else 0)
-    right_arm_x = fx + 8 + (walk_swing if state == "walking" else 0)
-    left_arm_y = arm_root_y + 8 + breath_offset
-    right_arm_y = arm_root_y + 8 + breath_offset
-
-    if state == "mining":
-        right_arm_y = arm_root_y + 12
+    if state == "climbing":
+        # 攀爬: 双手上举
+        left_arm_x = fx - 4
+        left_arm_y = body_top_y + breath_offset - 6 + climb_offset
         right_arm_x = fx + 4
+        right_arm_y = body_top_y + breath_offset - 6 - climb_offset
+        draw_line(
+            buffer, fx, arm_root_y + breath_offset, left_arm_x, left_arm_y, faction_color, line_width
+        )
+        draw_line(
+            buffer, fx, arm_root_y + breath_offset, right_arm_x, right_arm_y, faction_color, line_width
+        )
+    elif state == "building":
+        # 建造: 手臂在身前水平
+        left_arm_x = fx - 8 * dir_sign + build_offset
+        left_arm_y = arm_root_y + 4 + breath_offset
+        right_arm_x = fx + 3 * dir_sign - build_offset
+        right_arm_y = arm_root_y + 4 + breath_offset
+        draw_line(
+            buffer, fx, arm_root_y + breath_offset, left_arm_x, left_arm_y, faction_color, line_width
+        )
+        draw_line(
+            buffer, fx, arm_root_y + breath_offset, right_arm_x, right_arm_y, faction_color, line_width
+        )
+    elif state == "crafting":
+        # 制作: 双手小幅动作
+        left_arm_x = fx - 6 + craft_offset
+        left_arm_y = arm_root_y + 6 + breath_offset
+        right_arm_x = fx + 6 - craft_offset
+        right_arm_y = arm_root_y + 6 + breath_offset
+        draw_line(
+            buffer, fx, arm_root_y + breath_offset, left_arm_x, left_arm_y, faction_color, line_width
+        )
+        draw_line(
+            buffer, fx, arm_root_y + breath_offset, right_arm_x, right_arm_y, faction_color, line_width
+        )
+    elif state == "carrying":
+        # 搬运: 手臂自然下垂
+        left_arm_x = fx - 6
+        left_arm_y = arm_root_y + 10 + breath_offset
+        right_arm_x = fx + 6
+        right_arm_y = arm_root_y + 10 + breath_offset
+        draw_line(
+            buffer, fx, arm_root_y + breath_offset, left_arm_x, left_arm_y, faction_color, line_width
+        )
+        draw_line(
+            buffer, fx, arm_root_y + breath_offset, right_arm_x, right_arm_y, faction_color, line_width
+        )
+    elif state == "dying":
+        # 倒下: 手臂平放
+        left_arm_x = fx - 8 * dir_sign
+        left_arm_y = arm_root_y + breath_offset + body_shift_y + 6
+        right_arm_x = fx - 2 * dir_sign
+        right_arm_y = arm_root_y + breath_offset + body_shift_y + 4
+        draw_line(
+            buffer, fx, arm_root_y + breath_offset + body_shift_y,
+            left_arm_x, left_arm_y, faction_color, line_width
+        )
+        draw_line(
+            buffer, fx, arm_root_y + breath_offset + body_shift_y,
+            right_arm_x, right_arm_y, faction_color, line_width
+        )
+    else:
+        left_arm_x = fx - 8 + (-walk_swing if state == "walking" else 0)
+        right_arm_x = fx + 8 + (walk_swing if state == "walking" else 0)
+        left_arm_y = arm_root_y + 8 + breath_offset
+        right_arm_y = arm_root_y + 8 + breath_offset
 
-    if state == "attacking":
-        right_arm_x = fx + 8 + attack_offset * dir_sign
-        right_arm_y = arm_root_y + 4
+        if state == "mining":
+            right_arm_y = arm_root_y + 12
+            right_arm_x = fx + 4
 
-    draw_line(
-        buffer, fx, arm_root_y + breath_offset, left_arm_x, left_arm_y, faction_color, line_width
-    )
-    draw_line(
-        buffer, fx, arm_root_y + breath_offset, right_arm_x, right_arm_y, faction_color, line_width
-    )
+        if state == "attacking" or state == "fighting":
+            right_arm_x = fx + 8 + attack_offset * dir_sign
+            right_arm_y = arm_root_y + 4
+
+        if state == "fleeing":
+            left_arm_x = fx - 9 * dir_sign
+            left_arm_y = arm_root_y + 4 + breath_offset
+            right_arm_x = fx + 9 * -dir_sign
+            right_arm_y = arm_root_y + 4 + breath_offset
+
+        draw_line(
+            buffer, fx, arm_root_y + breath_offset, left_arm_x, left_arm_y, faction_color, line_width
+        )
+        draw_line(
+            buffer, fx, arm_root_y + breath_offset, right_arm_x, right_arm_y, faction_color, line_width
+        )
 
     # 头
-    draw_circle(buffer, fx, head_y + breath_offset, head_radius, secondary_color)
+    head_shift_y = 0.0
+    if state == "fighting":
+        head_shift_y = fight_stance
+    elif state == "dying":
+        head_shift_y = dying_fall
+    draw_circle(buffer, fx, head_y + breath_offset + head_shift_y, head_radius, secondary_color)
 
     # 武器绘制（附加在右臂末端）
     if weapon_visual is not None:
