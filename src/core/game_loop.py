@@ -87,9 +87,11 @@ class GameLoop:
 
     def _run_loop(self) -> None:
         """内部主循环."""
-        target_frame_time = 1.0 / self.config.target_fps
-
         while self.running:
+            # 每帧读取 target_fps，支持运行时动态调整
+            target_fps = max(1, self.config.target_fps)
+            target_frame_time = 1.0 / target_fps
+
             frame_start = time.time()
 
             if not self.paused:

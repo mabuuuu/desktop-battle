@@ -136,6 +136,42 @@ class TransparentOverlay:
         """直接在覆盖层上画矩形."""
         self._overlay.draw_rect(x, y, width, height, color, thickness)
 
+    # 中文字体缓存（延迟检测）
+    _chinese_font_path: str | None = None
+
+    @classmethod
+    def _detect_chinese_font(cls) -> str | None:
+        """检测系统中可用的中文字体路径."""
+        if cls._chinese_font_path is not None:
+            return cls._chinese_font_path if cls._chinese_font_path != "" else None
+        import os
+        candidates = [
+            "C:/Windows/Fonts/msyh.ttc",    # 微软雅黑
+            "C:/Windows/Fonts/msyhbd.ttc",   # 微软雅黑粗体
+            "C:/Windows/Fonts/simhei.ttf",   # 黑体
+            "C:/Windows/Fonts/simsun.ttc",   # 宋体
+        ]
+        for path in candidates:
+            if os.path.isfile(path):
+                cls._chinese_font_path = path
+                return path
+        cls._chinese_font_path = ""  # 标记为未找到
+        return None
+
+    @staticmethod
+    def _has_cjk(text: str) -> bool:
+        """检测字符串是否包含 CJK 字符."""
+        for ch in text:
+            cp = ord(ch)
+            if (0x4E00 <= cp <= 0x9FFF or   # CJK 统一汉字
+                0x3400 <= cp <= 0x4DBF or   # CJK 扩展A
+                0x3000 <= cp <= 0x303F or   # CJK 标点
+                0xFF00 <= cp <= 0xFFEF or   # 全角字符
+                0x2E80 <= cp <= 0x2EFF or   # CJK 部首
+                0xF900 <= cp <= 0xFAFF):    # CJK 兼容汉字
+                return True
+        return False
+
     def draw_text(
         self,
         x: int,
@@ -144,8 +180,11 @@ class TransparentOverlay:
         color: tuple[int, int, int, int] = (255, 255, 255, 255),
         font_size: float = 16.0,
     ) -> None:
-        """直接在覆盖层上绘制文本."""
-        self._overlay.draw_text(x, y, text, color, font_size)
+        """直接在覆盖层上绘制文本（自动检测中文并使用中文字体）."""
+        font_path: str | None = None
+        if self._has_cjk(text):
+            font_path = self._detect_chinese_font()
+        self._overlay.draw_text(x, y, text, color, font_size, font_path=font_path)
 
     def __enter__(self) -> TransparentOverlay:
         self.start()

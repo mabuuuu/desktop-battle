@@ -58,6 +58,9 @@ class RuntimeSettings:
     move_speed_multiplier: float = 1.0  # 0.5 ~ 3.0
     unit_scale: float = 1.0  # 0.5 ~ 3.0
 
+    # ── 帧率 ──
+    target_fps: int = 60  # 15 / 30 / 60 / 120
+
 
 class SettingsManager:
     """设置管理器.
@@ -110,6 +113,7 @@ class SettingsManager:
         try:
             game_config.game_speed = self.settings.game_speed  # type: ignore[attr-defined]
             game_config.move_speed_multiplier = self.settings.move_speed_multiplier  # type: ignore[attr-defined]
+            game_config.target_fps = self.settings.target_fps  # type: ignore[attr-defined]
         except AttributeError:
             pass
 
@@ -129,6 +133,7 @@ class SettingsManager:
             "gravity": self.settings.gravity,
             "move_speed_multiplier": self.settings.move_speed_multiplier,
             "unit_scale": self.settings.unit_scale,
+            "target_fps": self.settings.target_fps,
         }
 
     def _apply_data(self, data: dict[str, Any]) -> None:
@@ -159,6 +164,8 @@ class SettingsManager:
             self.settings.move_speed_multiplier = float(data["move_speed_multiplier"])
         if "unit_scale" in data:
             self.settings.unit_scale = float(data["unit_scale"])
+        if "target_fps" in data:
+            self.settings.target_fps = int(data["target_fps"])
 
     def set(self, key: str, value: Any) -> None:
         """修改单个设置项.

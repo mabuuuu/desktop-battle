@@ -138,6 +138,14 @@ class SettingsDialog:
             f"{s.initial_units}",
         )
 
+        # ── 帧率 ──
+        self._add_section(w, "帧率")
+        self._target_fps_var = tk.IntVar(value=getattr(s, 'target_fps', 60))
+        self._target_fps_label = self._add_slider(
+            w, "帧率上限", self._target_fps_var, 15, 120, 15,
+            f"{getattr(s, 'target_fps', 60)} FPS",
+        )
+
         # ── 按钮 ──
         btn_frame = tk.Frame(w, bg="#1a1a2e")
         btn_frame.pack(pady=15)
@@ -201,7 +209,12 @@ class SettingsDialog:
         # 对齐到分辨率
         if resolution >= 1:
             val = round(val / resolution) * resolution
-            label.config(text=f"{int(val)}")
+            val_int = int(val)
+            # 帧率特殊格式
+            if val_int <= 120 and val_int >= 15 and resolution >= 10:
+                label.config(text=f"{val_int} FPS")
+            else:
+                label.config(text=f"{val_int}")
         else:
             val = round(val / resolution) * resolution
             label.config(text=f"{val:.1f}x" if val < 100 else f"{val:.0f}")
@@ -220,6 +233,11 @@ class SettingsDialog:
         # 单位缩放
         unit_scale = self._unit_scale_var.get()
         sm.settings.unit_scale = unit_scale  # type: ignore[attr-defined]
+
+        # 帧率上限
+        target_fps = int(round(self._target_fps_var.get() / 15) * 15)  # 对齐到15的倍数
+        target_fps = max(15, min(120, target_fps))
+        sm.settings.target_fps = target_fps
 
         # 应用到 GameConfig
         if self._game_loop.world is not None:
