@@ -943,4 +943,375 @@ def draw_resource_glow(
     draw_circle(buffer, cx, cy, glow_radius, glow_color, 1)
 
 
+def draw_stickman_overlay(
+    overlay: object,
+    body_screen_x: float,
+    body_screen_y: float,
+    faction_color: tuple[int, int, int, int],
+    secondary_color: tuple[int, int, int, int],
+    line_width: int = 1,
+    head_radius: int = 2,
+    state: str = "idle",
+    anim_frame: int = 0,
+    weapon_visual: tuple[str, int] | None = None,
+    facing_right: bool = True,
+) -> None:
+    """使用 overlay 直接 API 绘制关节式火柴人（高性能版本）.
 
+    与 draw_stickman() 完全相同的骨骼/动画逻辑，
+    但直接调用 overlay.draw_line/draw_circle 而非 numpy buffer。
+    """
+    import math as _math
+
+    fx = body_screen_x
+    fy = body_screen_y  # 脚底
+
+    dir_sign = 1 if facing_right else -1
+
+    # ── 骨骼尺寸 (20px高火柴人) ──
+    hip_y = fy - 9
+    shoulder_y = fy - 15
+    head_y = fy - 18
+
+    upper_arm_len = 4.0
+    forearm_len = 4.0
+    thigh_len = 5.0
+    shin_len = 5.0
+
+    # ── 动画相位 ──
+    t = anim_frame * 0.05
+    breath_offset = _math.sin(t * 1.2) * 0.4
+
+    walk_phase = 0.0
+    walk_swing = 0.0
+    if state == "walking":
+        walk_phase = t * 3.0
+        walk_swing = _math.sin(walk_phase * _math.pi * 2) * 0.5
+
+    mining_angle = 0.0
+    if state == "mining":
+        mining_phase = t * 2.5
+        mining_angle = _math.sin(mining_phase * _math.pi) * 0.8
+
+    attack_offset = 0.0
+    if state in ("attacking", "fighting"):
+        attack_phase = t * 4.0
+        attack_offset = _math.sin(attack_phase * _math.pi) * 0.6
+
+    climb_phase = 0.0
+    if state == "climbing":
+        climb_phase = t * 2.0
+
+    flee_lean = 0.0
+    if state == "fleeing":
+        flee_lean = 0.3
+
+    build_phase = 0.0
+    if state == "building":
+        build_phase = t * 2.0
+
+    craft_phase = 0.0
+    if state == "crafting":
+        craft_phase = t * 2.5
+
+    dying_progress = 0.0
+    if state == "dying":
+        dying_progress = min(1.0, t * 0.3)
+
+    argue_phase = 0.0
+    if state == "arguing":
+        argue_phase = t * 3.0
+
+    # ── 身体偏移 ──
+    body_shift_y = 0.0
+    body_lean = 0.0
+    if state == "fighting":
+        body_shift_y = 1.5
+    elif state == "fleeing":
+        body_shift_y = 2.0
+        body_lean = flee_lean
+    elif state == "dying":
+        body_shift_y = dying_progress * 10.0
+        body_lean = dying_progress * 1.4
+    elif state == "arguing":
+        body_shift_y = 1.5
+
+    # ── 计算关节位置 ──
+    lean_dx = _math.sin(body_lean) * 6
+    shoulder_x = fx + lean_dx
+    shoulder_y_actual = shoulder_y + breath_offset + body_shift_y
+    hip_x = fx
+    hip_y_actual = hip_y + breath_offset + body_shift_y * 0.5
+
+    def _leg_joints(swing_angle: float, is_front: bool) -> tuple[tuple[float, float], tuple[float, float], tuple[float, float]]:
+        thigh_angle = swing_angle
+        knee_x = hip_x + _math.sin(thigh_angle) * thigh_len
+        knee_y = hip_y_actual + _math.cos(thigh_angle) * thigh_len
+
+        if state == "walking":
+            if swing_angle > 0:
+                knee_bend = 0.15 + abs(swing_angle) * 1.5
+            else:
+                knee_bend = 0.05
+        elif state == "dying":
+            knee_bend = 0.3 * dying_progress
+        elif state == "fighting":
+            knee_bend = 0.2
+        elif state == "climbing":
+            knee_bend = 0.4 + _math.sin(climb_phase * _math.pi * 2) * 0.2
+        else:
+            knee_bend = 0.15
+
+        shin_angle = thigh_angle + knee_bend
+        foot_x = knee_x + _math.sin(shin_angle) * shin_len
+        foot_y = knee_y + _math.cos(shin_angle) * shin_len
+
+        return (hip_x, hip_y_actual), (knee_x, knee_y), (foot_x, foot_y)
+
+    def _arm_joints(swing_angle: float, is_right: bool) -> tuple[tuple[float, float], tuple[float, float], tuple[float, float]]:
+        upper_arm_angle = swing_angle
+        elbow_x = shoulder_x + _math.sin(upper_arm_angle) * upper_arm_len
+        elbow_y = shoulder_y_actual + _math.cos(upper_arm_angle) * upper_arm_len
+
+        if state == "walking":
+            if swing_angle > 0:
+                elbow_bend = 0.3 + abs(swing_angle) * 0.8
+            else:
+                elbow_bend = 0.1
+        elif state == "mining" and is_right:
+            elbow_bend = 0.5 + mining_angle * 0.5
+        elif state in ("attacking", "fighting") and is_right:
+            elbow_bend = -0.2 + attack_offset * 0.3
+        elif state == "climbing":
+            elbow_bend = -0.8 + _math.sin(climb_phase * _math.pi * 2) * 0.3
+        elif state == "building":
+            elbow_bend = 0.6 + _math.sin(build_phase * _math.pi) * 0.3
+        elif state == "crafting":
+            elbow_bend = 0.4 + _math.sin(craft_phase * _math.pi * 2) * 0.3
+        elif state == "carrying":
+            elbow_bend = 0.3
+        elif state == "dying":
+            elbow_bend = 0.1 * dying_progress
+        elif state == "arguing" and is_right:
+            elbow_bend = -0.3 + _math.sin(argue_phase * _math.pi * 2) * 0.2
+        else:
+            elbow_bend = 0.2
+
+        forearm_angle = upper_arm_angle + elbow_bend
+        hand_x = elbow_x + _math.sin(forearm_angle) * forearm_len
+        hand_y = elbow_y + _math.cos(forearm_angle) * forearm_len
+
+        return (shoulder_x, shoulder_y_actual), (elbow_x, elbow_y), (hand_x, hand_y)
+
+    # ── 计算各肢体 ──
+    if state == "walking":
+        left_leg_swing = walk_swing
+        right_leg_swing = -walk_swing
+    elif state == "climbing":
+        left_leg_swing = _math.sin(climb_phase * _math.pi * 2) * 0.3
+        right_leg_swing = -_math.sin(climb_phase * _math.pi * 2) * 0.3
+    elif state == "dying":
+        left_leg_swing = 0.0
+        right_leg_swing = 0.0
+    elif state == "fighting":
+        left_leg_swing = -0.1
+        right_leg_swing = 0.1
+    elif state == "arguing":
+        left_leg_swing = 0.0
+        right_leg_swing = 0.0
+    else:
+        idle_sway = _math.sin(anim_frame * 0.05) * 0.03
+        left_leg_swing = idle_sway
+        right_leg_swing = -idle_sway
+
+    left_hip, left_knee, left_foot = _leg_joints(left_leg_swing, False)
+    right_hip, right_knee, right_foot = _leg_joints(right_leg_swing, True)
+
+    if state == "walking":
+        left_arm_swing = -walk_swing * 0.7
+        right_arm_swing = walk_swing * 0.7
+    elif state == "mining":
+        left_arm_swing = 0.1
+        right_arm_swing = 0.3 + mining_angle
+    elif state in ("attacking", "fighting"):
+        left_arm_swing = 0.1
+        right_arm_swing = 0.5 + attack_offset
+    elif state == "climbing":
+        left_arm_swing = -0.8 + _math.sin(climb_phase * _math.pi * 2) * 0.3
+        right_arm_swing = -0.8 - _math.sin(climb_phase * _math.pi * 2) * 0.3
+    elif state == "fleeing":
+        left_arm_swing = -0.4
+        right_arm_swing = -0.4
+    elif state == "building":
+        left_arm_swing = 0.3 + _math.sin(build_phase * _math.pi) * 0.2
+        right_arm_swing = 0.3 - _math.sin(build_phase * _math.pi) * 0.2
+    elif state == "crafting":
+        left_arm_swing = 0.2 + _math.sin(craft_phase * _math.pi * 2) * 0.15
+        right_arm_swing = 0.2 - _math.sin(craft_phase * _math.pi * 2) * 0.15
+    elif state == "carrying":
+        left_arm_swing = 0.15
+        right_arm_swing = 0.15
+    elif state == "dying":
+        left_arm_swing = 0.0
+        right_arm_swing = 0.0
+    elif state == "arguing":
+        left_arm_swing = 0.1
+        right_arm_swing = 0.6 + _math.sin(argue_phase * _math.pi * 2) * 0.2
+    else:
+        idle_arm_sway = _math.sin(anim_frame * 0.04) * 0.05
+        left_arm_swing = idle_arm_sway
+        right_arm_swing = -idle_arm_sway
+
+    left_shoulder_pt, left_elbow, left_hand = _arm_joints(left_arm_swing, False)
+    right_shoulder_pt, right_elbow, right_hand = _arm_joints(right_arm_swing, True)
+
+    # ── 绘制（overlay 直接 API）──
+    # 身体线: 髋→肩
+    overlay.draw_line(int(round(hip_x)), int(round(hip_y_actual)),
+                      int(round(shoulder_x)), int(round(shoulder_y_actual)),
+                      faction_color, line_width)
+
+    # 左腿: 髋→膝→脚
+    overlay.draw_line(int(round(left_hip[0])), int(round(left_hip[1])),
+                      int(round(left_knee[0])), int(round(left_knee[1])),
+                      faction_color, line_width)
+    overlay.draw_line(int(round(left_knee[0])), int(round(left_knee[1])),
+                      int(round(left_foot[0])), int(round(left_foot[1])),
+                      faction_color, line_width)
+
+    # 右腿: 髋→膝→脚
+    overlay.draw_line(int(round(right_hip[0])), int(round(right_hip[1])),
+                      int(round(right_knee[0])), int(round(right_knee[1])),
+                      faction_color, line_width)
+    overlay.draw_line(int(round(right_knee[0])), int(round(right_knee[1])),
+                      int(round(right_foot[0])), int(round(right_foot[1])),
+                      faction_color, line_width)
+
+    # 左臂: 肩→肘→手
+    overlay.draw_line(int(round(left_shoulder_pt[0])), int(round(left_shoulder_pt[1])),
+                      int(round(left_elbow[0])), int(round(left_elbow[1])),
+                      faction_color, line_width)
+    overlay.draw_line(int(round(left_elbow[0])), int(round(left_elbow[1])),
+                      int(round(left_hand[0])), int(round(left_hand[1])),
+                      faction_color, line_width)
+
+    # 右臂: 肩→肘→手
+    overlay.draw_line(int(round(right_shoulder_pt[0])), int(round(right_shoulder_pt[1])),
+                      int(round(right_elbow[0])), int(round(right_elbow[1])),
+                      faction_color, line_width)
+    overlay.draw_line(int(round(right_elbow[0])), int(round(right_elbow[1])),
+                      int(round(right_hand[0])), int(round(right_hand[1])),
+                      faction_color, line_width)
+
+    # 头
+    head_shift_y = 0.0
+    if state == "fighting":
+        head_shift_y = 1.5
+    elif state == "dying":
+        head_shift_y = dying_progress * 10.0
+    overlay.draw_circle(int(round(shoulder_x)),
+                        int(round(head_y + breath_offset + head_shift_y)),
+                        head_radius, secondary_color, 0)
+
+    # 争吵气泡
+    if state == "arguing":
+        bubble_y = head_y + breath_offset + head_shift_y - 5
+        overlay.draw_line(int(round(shoulder_x)), int(round(bubble_y - 2)),
+                          int(round(shoulder_x)), int(round(bubble_y + 1)),
+                          (255, 60, 60, 255), 1)
+        overlay.draw_circle(int(round(shoulder_x)), int(round(bubble_y + 2.5)),
+                            1, (255, 60, 60, 255), 0)
+
+    # 武器绘制
+    if weapon_visual is not None:
+        weapon_type, weapon_length = weapon_visual
+        wp_x = right_hand[0]
+        wp_y = right_hand[1]
+        wp_ext_x = wp_x + weapon_length * dir_sign
+
+        if weapon_type == "spear":
+            overlay.draw_line(int(round(wp_x)), int(round(wp_y)),
+                              int(round(wp_ext_x)), int(round(wp_y - 1)),
+                              faction_color, line_width)
+            overlay.draw_line(int(round(wp_ext_x)), int(round(wp_y - 1)),
+                              int(round(wp_ext_x + 1.5 * dir_sign)), int(round(wp_y - 1)),
+                              faction_color, 1)
+        elif weapon_type == "sword":
+            overlay.draw_line(int(round(wp_x)), int(round(wp_y)),
+                              int(round(wp_ext_x)), int(round(wp_y)),
+                              faction_color, line_width)
+            guard_x = wp_x + weapon_length * 0.3 * dir_sign
+            overlay.draw_line(int(round(guard_x)), int(round(wp_y - 1.5)),
+                              int(round(guard_x)), int(round(wp_y + 1.5)),
+                              faction_color, 1)
+        elif weapon_type == "shield":
+            overlay.draw_circle(int(round(left_hand[0])),
+                                int(round(left_hand[1])),
+                                3, faction_color, 1)
+        elif weapon_type == "fist":
+            pass
+
+
+def draw_building_overlay(
+    overlay: object,
+    x: int,
+    y: int,
+    width: int,
+    height: int,
+    color: tuple[int, int, int, int],
+    building_type: str,
+    level: int = 1,
+    line_width: int = 2,
+) -> None:
+    """使用 overlay 直接 API 绘制建筑."""
+    if building_type == "workbench":
+        table_top_y = y
+        leg_bottom_y = y + height
+        overlay.draw_line(x, table_top_y, x + width, table_top_y, color, line_width)
+        overlay.draw_line(x + 4, table_top_y, x + 4, leg_bottom_y, color, line_width)
+        overlay.draw_line(x + width - 4, table_top_y, x + width - 4, leg_bottom_y, color, line_width)
+        if level >= 2:
+            tool_y = table_top_y - 10
+            overlay.draw_circle(x + width // 2, tool_y, 3, color, 1)
+        if level >= 3:
+            glow_color = (color[0], color[1], color[2], 80)
+            overlay.draw_circle(x + width // 2, table_top_y - 5, 8, glow_color, 1)
+
+    elif building_type == "barracks":
+        roof_top_y = y
+        roof_bottom_y = y + height // 3
+        wall_bottom_y = y + height
+        mid_x = x + width // 2
+        overlay.draw_line(mid_x, roof_top_y, x, roof_bottom_y, color, line_width)
+        overlay.draw_line(mid_x, roof_top_y, x + width, roof_bottom_y, color, line_width)
+        overlay.draw_line(x, roof_bottom_y, x + width, roof_bottom_y, color, line_width)
+        overlay.draw_rect(x + 2, roof_bottom_y, width - 4, wall_bottom_y - roof_bottom_y, color, 1)
+        door_x = x + width // 2 - 3
+        overlay.draw_rect(door_x, wall_bottom_y - 8, 6, 8, (color[0], color[1], color[2], 120), 1)
+
+    elif building_type == "resource":
+        cx = x + width // 2
+        cy = y + height // 2
+        overlay.draw_line(cx, y, x + width, cy, color, line_width)
+        overlay.draw_line(x + width, cy, cx, y + height, color, line_width)
+        overlay.draw_line(cx, y + height, x, cy, color, line_width)
+        overlay.draw_line(x, cy, cx, y, color, line_width)
+
+
+def draw_health_bar_overlay(
+    overlay: object,
+    x: int,
+    y: int,
+    width: int,
+    height: int,
+    current_hp: float,
+    max_hp: float,
+    bar_color: tuple[int, int, int, int],
+    bg_color: tuple[int, int, int, int],
+) -> None:
+    """使用 overlay 直接 API 绘制血条."""
+    overlay.draw_rect(x, y, width, height, bg_color, 1)
+    ratio = max(0.0, min(1.0, current_hp / max_hp))
+    fill_w = int(width * ratio)
+    if fill_w > 0:
+        overlay.draw_rect(x, y, fill_w, height, bar_color, 0)

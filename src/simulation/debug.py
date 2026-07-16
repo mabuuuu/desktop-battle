@@ -213,6 +213,88 @@ class DebugSystem:
                 }.get(mind.emotion.value, mind.emotion.value)
                 overlay.draw_text(info_x + 5, info_y + 63, f"士气:{mind.morale:.1f} 情绪:{emotion_cn}", (160, 160, 200, 200), 10.0)
 
+    def render_debug_overlay_overlay(self, overlay: object) -> None:
+        """使用overlay直接API渲染调试覆盖层（高性能）."""
+        if not self.state.enabled:
+            return
+
+        for unit in self._world.units:
+            if not unit.alive:
+                continue
+
+            sx, sy = unit.screen_position(self._world.screen_height)
+            isx, isy = int(round(sx)), int(round(sy))
+
+            # 选中高亮
+            if unit.unit_id == self.state.selected_unit_id:
+                overlay.draw_circle(isx, isy - 10, 14, (255, 255, 0, 120), 1)
+
+            # 感知范围
+            if self.state.show_perception:
+                from src.simulation.perception import PerceptionConfig
+                cfg = PerceptionConfig()
+                if unit.facing_right:
+                    overlay.draw_line(isx, isy - 10, isx + int(cfg.forward_range), isy - 10,
+                                      (100, 100, 255, 60), 1)
+                else:
+                    overlay.draw_line(isx - int(cfg.forward_range), isy - 10, isx, isy - 10,
+                                      (100, 100, 255, 60), 1)
+                overlay.draw_circle(isx, isy - 10, int(cfg.hearing_range), (80, 80, 80, 40), 1)
+
+            # 角色标签
+            if self.state.show_roles:
+                from src.entity.unit import UnitRole
+                role_char = {
+                    UnitRole.GATHERER: "G",
+                    UnitRole.BUILDER: "B",
+                    UnitRole.SOLDIER: "S",
+                    UnitRole.SCOUT: "R",
+                    UnitRole.IDLE: "?",
+                }.get(unit.role, "?")
+                overlay.draw_text(isx - 2, isy - 22, role_char, (255, 255, 0, 200), 8.0)
+
+        # 选中单位的详细信息
+        if self.state.show_debug_info and self.state.selected_unit_id is not None:
+            self._render_unit_info_overlay(overlay)
+
+    def _render_unit_info_overlay(self, overlay: object) -> None:
+        """使用overlay直接API渲染选中单位的详细信息（高性能）."""
+        unit = self._find_unit(self.state.selected_unit_id)
+        if unit is None:
+            return
+
+        info_x, info_y = 10, self._world.screen_height - 80
+        overlay.draw_rect(info_x, info_y, 200, 70, (10, 10, 30, 200), 0)
+        overlay.draw_rect(info_x, info_y, 200, 70, (80, 80, 120, 200), 1)
+
+        from src.entity.unit import UnitRole
+        role_name = {
+            UnitRole.GATHERER: "生产者",
+            UnitRole.BUILDER: "建造者",
+            UnitRole.SOLDIER: "战士",
+            UnitRole.SCOUT: "侦察",
+            UnitRole.IDLE: "空闲",
+        }.get(unit.role, "未知")
+        overlay.draw_text(info_x + 5, info_y + 3, f"#{unit.unit_id} {unit.faction_name}", (200, 200, 255, 255), 11.0)
+        overlay.draw_text(info_x + 5, info_y + 18, f"角色:{role_name} 状态:{unit.state.value}", (180, 180, 220, 220), 10.0)
+        overlay.draw_text(info_x + 5, info_y + 33, f"HP:{unit.hp:.0f}/{unit.max_hp:.0f} 携带:木{unit.carrying_wood}矿{unit.carrying_ore}", (180, 180, 220, 220), 10.0)
+        weapon_name = "无"
+        if unit.weapon is not None:
+            try:
+                weapon_name = unit.weapon.spec.name  # type: ignore
+            except AttributeError:
+                weapon_name = "有"
+        overlay.draw_text(info_x + 5, info_y + 48, f"武器:{weapon_name} 朝向:{'右' if unit.facing_right else '左'}", (180, 180, 220, 220), 10.0)
+
+        simulation = getattr(self._world, 'simulation', None)
+        if simulation is not None:
+            mind = simulation.get_mind(unit.unit_id)
+            emotion_cn = {
+                "calm": "平静", "alert": "警觉", "fearful": "恐惧",
+                "brave": "勇敢", "hesitant": "犹豫",
+            }.get(mind.emotion.value, mind.emotion.value)
+            overlay.draw_text(info_x + 5, info_y + 63, f"士气:{mind.morale:.1f} 情绪:{emotion_cn}", (160, 160, 200, 200), 10.0)
+
     def _find_unit(self, unit_id: int) -> Unit | None:
         """查找单位."""
         for u in self._world.units:

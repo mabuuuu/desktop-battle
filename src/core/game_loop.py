@@ -8,7 +8,6 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
-import numpy as np
 from loguru import logger
 
 if TYPE_CHECKING:
@@ -39,7 +38,7 @@ class GameLoop:
         self._fps_frame_count: int = 0
         self._current_fps: float = 0.0
 
-        # 渲染缓冲
+        # 渲染缓冲 (不再需要，保留字段兼容)
         self._render_buffer: np.ndarray | None = None
 
     def start(self) -> None:
@@ -51,9 +50,7 @@ class GameLoop:
             self.overlay.height,
         )
         self.running = True
-        self._render_buffer = np.zeros(
-            (self.overlay.height, self.overlay.width, 4), dtype=np.uint8
-        )
+        # 不再分配 numpy 全帧缓冲 — 渲染已切换到 overlay 直接 API
         self._last_fps_report_time = time.time()
 
         # 日志系统
@@ -140,12 +137,9 @@ class GameLoop:
         pass
 
     def _update_render(self) -> None:
-        """渲染所有实体."""
-        if self._render_buffer is None:
-            return
-
+        """渲染所有实体（使用 overlay 直接 API）."""
         if self.world is not None:
-            self.world.render(self.overlay, self._render_buffer)  # type: ignore[union-attr]
+            self.world.render(self.overlay)  # type: ignore[union-attr]
 
     def _get_unit_count(self) -> int:
         """获取当前单位总数."""

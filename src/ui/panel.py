@@ -283,6 +283,102 @@ class InfoPanel:
 
         return y
 
+    def render_overlay(self, overlay: object) -> None:
+        """使用overlay直接API渲染面板（高性能，纯overlay版本）."""
+        if not self._visible:
+            return
+
+        panel_h = self._calculate_height()
+        x, y, w = self._x, self._y, self._width
+
+        # 半透明背景
+        overlay.draw_rect(x, y, w, panel_h, (20, 20, 40, 180), 0)
+
+        # 标题栏
+        overlay.draw_rect(x, y, w, self.HEADER_HEIGHT, (40, 40, 70, 230), 0)
+
+        # 标题文本
+        overlay.draw_text(x + 6, y + 2, "桌面大乱斗", (200, 200, 255, 255), 14.0)
+        overlay.draw_text(x + w - 18, y + 2, "×", (255, 100, 100, 255), 14.0)
+
+        # 分隔线
+        line_y = y + self.HEADER_HEIGHT
+        overlay.draw_line(x, line_y, x + w, line_y, (80, 80, 120, 150), 1)
+
+        # 运行时间
+        mins = int(self._world.elapsed_time // 60)
+        secs = int(self._world.elapsed_time % 60)
+        overlay.draw_text(x + 6, line_y + 2, f"运行时间: {mins:02d}:{secs:02d}", (180, 180, 200, 200), 12.0)
+
+        # 缩放提示
+        overlay.draw_line(x + w - 3, y, x + w - 3, y + panel_h, (100, 100, 180, 100), 2)
+
+        # 阵营信息
+        row_y = float(line_y + 22)
+        for stats in self._faction_stats:
+            row_y = self._render_faction_row_overlay(overlay, x, row_y, w, stats)
+
+        # 底部边框
+        overlay.draw_rect(x, y, w, panel_h, (60, 60, 90, 200), 1)
+
+    def _render_faction_row_overlay(
+        self,
+        overlay: object,
+        panel_x: int,
+        start_y: float,
+        panel_w: int,
+        stats: dict[str, object],
+    ) -> float:
+        """使用overlay直接API渲染单个阵营信息行."""
+        x = panel_x
+        y = start_y
+        color = stats["color"]
+        r, g, b = self._hex_to_rgb(str(color))
+
+        # 阵营名 + 颜色条
+        overlay.draw_rect(x + 4, int(y) - 1, 10, 10, (r, g, b, 200), 0)
+        name = str(stats["name"])
+        strategy = str(stats["strategy"])
+        strategy_cn = {
+            "expand": "扩张",
+            "rush": "突击",
+            "defense": "防御",
+            "tech": "科技",
+        }.get(strategy, strategy)
+        overlay.draw_text(x + 18, int(y) - 2, f"{name} [{strategy_cn}]", (r, g, b, 240), 12.0)
+        y += 16
+
+        # 资源
+        wood = int(stats["wood"])
+        ore = int(stats["ore"])
+        overlay.draw_text(x + 10, int(y) - 2, f"木材:{wood}  矿石:{ore}", (180, 200, 180, 220), 11.0)
+        y += 14
+
+        # 单位
+        alive = int(stats["alive"])
+        produced = int(stats["units_produced"])
+        lost = int(stats["units_lost"])
+        overlay.draw_text(
+            x + 10, int(y) - 2,
+            f"存活:{alive}(+{produced})  阵亡:{lost}",
+            (180, 180, 220, 220), 11.0,
+        )
+        y += 14
+
+        # 建筑 + 武器
+        wb = int(stats["workbenches"])
+        max_bench = int(stats["max_bench"])
+        br = int(stats["barracks"])
+        weapons = int(stats["weapon_count"])
+        overlay.draw_text(
+            x + 10, int(y) - 2,
+            f"工具台:{wb}(Lv{max_bench}) 兵营:{br} 武装:{weapons}",
+            (180, 180, 220, 220), 11.0,
+        )
+        y += 16
+
+        return y
+
     def _calculate_height(self) -> int:
         """计算面板高度."""
         rows_per_faction = 4

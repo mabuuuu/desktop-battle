@@ -268,6 +268,32 @@ class Unit:
         elif self.state_blend < 1.0:
             self.state_blend = min(1.0, self.state_blend + 0.15)  # ~7帧过渡
 
+    def render_overlay(self, overlay: object, screen_height: int) -> None:
+        """使用overlay直接API渲染火柴人（高性能）."""
+        if not self.alive:
+            return
+        sx, sy = self.screen_position(screen_height)
+        from src.render.sprite import draw_stickman_overlay
+        weapon_vis = self.get_weapon_visual()
+        draw_stickman_overlay(
+            overlay, sx, sy,
+            self._rgba_color, self._rgba_secondary,
+            line_width=self.config.stickman_line_width,
+            head_radius=self.config.stickman_head_radius,
+            state=self.state.value,
+            anim_frame=self.anim_frame,
+            weapon_visual=weapon_vis,
+            facing_right=self.facing_right,
+        )
+
+        # 携带资源标记
+        if self.carrying_wood > 0 or self.carrying_ore > 0:
+            mark_y = int(sy - self.config.stickman_height - 2)
+            if self.carrying_wood > 0:
+                overlay.draw_circle(int(sx - 1.5), mark_y, 1, (68, 204, 68, 200), 0)
+            if self.carrying_ore > 0:
+                overlay.draw_circle(int(sx + 1.5), mark_y, 1, (204, 170, 68, 200), 0)
+
     def render(
         self,
         buffer: np.ndarray,

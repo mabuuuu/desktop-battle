@@ -751,52 +751,85 @@ class World:
                 return f
         return None
 
-    def render(self, overlay: TransparentOverlay, buffer: np.ndarray) -> None:
-        """渲染所有实体到 overlay."""
-        buffer.fill(0)
+    def render(self, overlay: TransparentOverlay) -> None:
+        """渲染所有实体到 overlay（纯 overlay 直接 API，无 numpy 缓冲）."""
+        import time as _time
+        t0 = _time.perf_counter()
 
-        # 1. 地形线
+        # 清空overlay（每帧开始）
+        overlay.clear_frame()
+
+        t1 = _time.perf_counter()
+
+        # 1. 地形线 (overlay直接API)
         rect = get_taskbar_rect()
         if rect is not None:
-            from src.render.sprite import draw_line
-            terrain_color = (60, 60, 80, 150)
-            draw_line(buffer,
-                float(rect.left), float(rect.top),
-                float(rect.right), float(rect.top),
-                terrain_color, 3)
+            overlay.draw_line(
+                rect.left, rect.top, rect.right, rect.top,
+                (60, 60, 80, 150), 3,
+            )
 
-        # 2. 建筑
+        t2 = _time.perf_counter()
+
+        # 2. 建筑 (overlay直接API)
         for building in self.buildings:
-            building.render(buffer, self.screen_height)
+            building.render_overlay(overlay, self.screen_height)
 
-        # 3. 资源节点
+        t3 = _time.perf_counter()
+
+        # 3. 资源节点 (overlay直接API)
         for node in self.resource_nodes:
-            node.render(buffer, self.screen_height)
+            node.render_overlay(overlay, self.screen_height)
 
-        # 4. 掉落武器
-        for weapon in self.weapons_on_ground:
-            self._render_weapon_on_ground(buffer, weapon)
+        t4 = _time.perf_counter()
 
-        # 5. 单位
+        # 5. 单位 (overlay直接API)
         for unit in self.units:
             if unit.alive:
-                unit.render(buffer, self.screen_height)
+                unit.render_overlay(overlay, self.screen_height)
 
-        # 6. 视觉效果 (攻击闪光、粒子等)
-        self.effect_manager.update_and_render(buffer, int(self.elapsed_time * 60))
+        t5 = _time.perf_counter()
 
-        # 7. HUD
-        self._render_hud(buffer)
+        # 4. 掉落武器 (overlay直接API)
+        for weapon in self.weapons_on_ground:
+            self._render_weapon_on_ground_overlay(overlay, weapon)
+
+        # 6. 视觉效果
+        # self.effect_manager.update_and_render(buffer, int(self.elapsed_time * 60))
+
+        # 7. HUD (overlay直接API)
+        self._render_hud_overlay(overlay)
 
         # 8. 信息面板
         if self._panel is not None and self._panel.visible:
-            self._panel.render(buffer)
+            self._panel.render_overlay(overlay)
 
         # 9. 调试覆盖层
-        self.debug.render_debug_overlay(buffer)
+        if self.debug.state.enabled:
+            self.debug.render_debug_overlay_overlay(overlay)
+
+        t6 = _time.perf_counter()
 
         # 提交到 overlay
-        overlay.render_numpy_buffer(buffer, "game_frame")
+        overlay.signal_render()
+
+        t7 = _time.perf_counter()
+
+        # 性能日志 (每5秒输出一次)
+        if not hasattr(self, '_render_log_time'):
+            self._render_log_time = 0.0
+        self._render_log_time += (t7 - t0)
+        if self._render_log_time > 5.0:
+            from loguru import logger
+            logger.debug(
+                "Render timing: clear={:.1f}ms terrain={:.1f}ms buildings={:.1f}ms "
+                "resources={:.1f}ms units={:.1f}ms hud+panel={:.1f}ms submit={:.1f}ms "
+                "total={:.1f}ms",
+                (t1 - t0) * 1000, (t2 - t1) * 1000, (t3 - t2) * 1000,
+                (t4 - t3) * 1000, (t5 - t4) * 1000, (t6 - t5) * 1000,
+                (t7 - t6) * 1000, (t7 - t0) * 1000,
+            )
+            self._render_log_time = 0.0
 
     def _render_weapon_on_ground(self, buffer: np.ndarray, weapon: WeaponInstance) -> None:
         """渲染地面上的武器."""
@@ -821,6 +854,41 @@ class World:
         if overlay is None:
             return
 
+        mins = int(self.elapsed_time // 60)
+        secs = int(self.elapsed_time % 60)
+        overlay.draw_text(10, 10, f"运行: {mins:02d}:{secs:02d}", (255, 255, 255, 200), 12.0)
+
+        y_offset = 30
+        for faction in self.factions:
+            strategy_cn = {
+                "expand": "扩张",
+                "rush": "突击",
+                "defense": "防御",
+                "tech": "科技",
+            }.get(faction.current_strategy, faction.current_strategy)
+            info = f"{faction.name}: 存活={faction.alive_count} 木={faction.wood} 矿={faction.ore} [{strategy_cn}]"
+            r, g, b, _ = Unit._hex_to_rgba(faction.color_hex)
+            overlay.draw_text(10, y_offset, info, (r, g, b, 220), 12.0)
+            y_offset += 18
+
+    def _render_weapon_on_ground_overlay(self, overlay: object, weapon: WeaponInstance) -> None:
+        """使用overlay直接API渲染地面上的武器."""
+        sx, sy = int(round(weapon.drop_x)), int(round(weapon.drop_y))
+        spec = weapon.spec
+        color = (200, 200, 200, 180)
+
+        if spec.name == "长矛":
+            overlay.draw_line(sx - 8, sy, sx + 8, sy, color, 2)
+        elif spec.name == "剑":
+            overlay.draw_line(sx - 5, sy, sx + 5, sy, color, 2)
+            overlay.draw_line(sx + 1, sy - 3, sx + 1, sy + 3, color, 1)
+        elif spec.name == "盾":
+            overlay.draw_circle(sx, sy, 5, color, 2)
+
+        overlay.draw_text(sx - 4, sy - 10, spec.name[0], (255, 255, 255, 150), 8.0)
+
+    def _render_hud_overlay(self, overlay: object) -> None:
+        """使用overlay直接API渲染HUD信息（中文）."""
         mins = int(self.elapsed_time // 60)
         secs = int(self.elapsed_time % 60)
         overlay.draw_text(10, 10, f"运行: {mins:02d}:{secs:02d}", (255, 255, 255, 200), 12.0)

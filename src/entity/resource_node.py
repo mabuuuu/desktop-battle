@@ -90,3 +90,18 @@ class ResourceNode:
             draw_line(buffer, sx, sy - 8, sx - 3, sy, color, 1)
             draw_line(buffer, sx, sy - 8, sx + 3, sy, color, 1)
             draw_line(buffer, sx - 3, sy, sx + 3, sy, color, 1)
+
+    def render_overlay(self, overlay: object, screen_height: int) -> None:
+        """使用overlay直接API渲染采集点（高性能）."""
+        sx, sy = self.screen_position(screen_height)
+        isx, isy = int(round(sx)), int(round(sy))
+        color = self._rgba_color
+
+        if self.resource_type == "wood":
+            overlay.draw_line(isx, isy, isx, isy - 8, color, 1)
+            overlay.draw_line(isx - 3, isy - 6, isx + 3, isy - 6, color, 1)
+            overlay.draw_line(isx - 2, isy - 8, isx + 2, isy - 8, color, 1)
+        else:
+            overlay.draw_line(isx, isy - 8, isx - 3, isy, color, 1)
+            overlay.draw_line(isx, isy - 8, isx + 3, isy, color, 1)
+            overlay.draw_line(isx - 3, isy, isx + 3, isy, color, 1)

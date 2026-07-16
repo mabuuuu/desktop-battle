@@ -232,3 +232,42 @@ class Building:
                 (255, 255, 200, 200),
                 8,
             )
+
+    def render_overlay(self, overlay: object, screen_height: int) -> None:
+        """使用overlay直接API渲染建筑（高性能）."""
+        from src.render.sprite import draw_building_overlay, draw_health_bar_overlay
+
+        sx, sy = self.screen_position(screen_height)
+        isx, isy = int(round(sx)), int(round(sy))
+
+        draw_building_overlay(
+            overlay,
+            isx,
+            isy - self.height,
+            self.width,
+            self.height,
+            self._rgba_color,
+            self.building_type,
+            self.level,
+        )
+
+        draw_health_bar_overlay(
+            overlay,
+            isx,
+            isy - self.height - 6,
+            self.width,
+            3,
+            self.hp,
+            self.max_hp,
+            self._rgba_color,
+            (40, 40, 40, 180),
+        )
+
+        if self.production_queue:
+            overlay.draw_text(
+                isx + self.width // 2 - 5,
+                isy - self.height - 14,
+                f"Q:{len(self.production_queue)}",
+                (255, 255, 200, 200),
+                8.0,
+            )
