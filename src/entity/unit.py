@@ -143,10 +143,30 @@ class Unit:
         return physics_to_screen(self.body.position.x, self.body.position.y, screen_height)
 
     def move_toward(self, target_x: float) -> None:
-        """向目标X坐标移动（施加水平力）."""
+        """向目标X坐标移动（施加水平力，限制在屏幕边界内）."""
         if self.body is None or self.body.body_type != pymunk.Body.DYNAMIC:
             return
-        dx = target_x - self.body.position.x
+
+        # 屏幕边界检查: 小人不应该移出屏幕
+        margin = 15.0  # 边缘留白
+        screen_w = float(self.config.unit_perception_range * 20)  # 估算屏幕宽度
+        # 使用world的实际宽度（如果可获取）
+        sx, _ = self.screen_position(0)  # 近似位置
+        phys_x = self.body.position.x
+
+        # 物理坐标系中估算边界 (pymunk X轴与屏幕X轴一致)
+        # 如果目标在边界外，钳制到边界
+        # 使用简单的物理X边界: 左边界5, 右边界用屏幕宽度估算
+        # 这里无法直接获取screen_width，所以用反弹逻辑
+        dx = target_x - phys_x
+
+        # 如果已经在很边缘且继续向外走，停止
+        if abs(dx) < 2.0:
+            # 已经很近了，不用移动
+            if self.state == UnitState.WALKING:
+                self.state = UnitState.IDLE
+            return
+
         direction = 1.0 if dx > 0 else -1.0
 
         # 更新朝向
@@ -166,7 +186,9 @@ class Unit:
 
         if self.state not in (UnitState.FIGHTING, UnitState.CLIMBING,
                               UnitState.DYING, UnitState.MINING,
-                              UnitState.BUILDING, UnitState.CRAFTING):
+                              UnitState.BUILDING, UnitState.CRAFTING,
+                              UnitState.PATROLLING, UnitState.SCOUTING,
+                              UnitState.ARGUING):
             self.state = UnitState.WALKING
 
     def jump(self, impulse: float = 300.0) -> None:

@@ -352,6 +352,35 @@ class World:
         self.physics.add_body(body, shape)
         self._terrain_bodies.append((body, [shape]))
 
+        # 创建左右边界墙（防止小人移出屏幕）
+        self._create_boundary_walls()
+
+    def _create_boundary_walls(self) -> None:
+        """创建屏幕左右边界墙."""
+        # 左边界墙
+        p1_left = screen_to_physics(0.0, 0.0, self.screen_height)
+        p2_left = screen_to_physics(0.0, float(self.screen_height), self.screen_height)
+        body_left, shape_left = create_terrain_segment(
+            x1=p1_left[0], y1=p1_left[1], x2=p2_left[0], y2=p2_left[1],
+            friction=self.config.terrain_friction,
+            elasticity=self.config.terrain_elasticity,
+            radius=2.0,
+        )
+        self.physics.add_body(body_left, shape_left)
+        self._terrain_bodies.append((body_left, [shape_left]))
+
+        # 右边界墙
+        p1_right = screen_to_physics(float(self.screen_width), 0.0, self.screen_height)
+        p2_right = screen_to_physics(float(self.screen_width), float(self.screen_height), self.screen_height)
+        body_right, shape_right = create_terrain_segment(
+            x1=p1_right[0], y1=p1_right[1], x2=p2_right[0], y2=p2_right[1],
+            friction=self.config.terrain_friction,
+            elasticity=self.config.terrain_elasticity,
+            radius=2.0,
+        )
+        self.physics.add_body(body_right, shape_right)
+        self._terrain_bodies.append((body_right, [shape_right]))
+
     def _scan_and_create_platforms(self) -> None:
         """扫描窗口并创建平台物理体."""
         scan_start = time.time()

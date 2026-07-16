@@ -134,12 +134,10 @@ def update_climbing(unit: Unit, dt: float, world: World) -> None:
     wall_max_y = getattr(unit, "_climb_wall_max_y", 0.0)
 
     # 沿墙壁向上移动
-    climb_speed = float(getattr(unit, "faction_cfg", None))
+    climb_speed = CLIMB_SPEED
     try:
-        if hasattr(unit.faction_cfg, "climb_speed"):
+        if hasattr(unit, "faction_cfg") and unit.faction_cfg is not None:
             climb_speed = float(unit.faction_cfg.climb_speed)  # type: ignore[union-attr]
-        else:
-            climb_speed = CLIMB_SPEED
     except (AttributeError, TypeError):
         climb_speed = CLIMB_SPEED
 
