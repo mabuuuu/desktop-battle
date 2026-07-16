@@ -540,14 +540,21 @@ def draw_stickman(
     # ── 动画相位 ──
     # 使用连续sin函数替代阶跃，更流畅
     t = anim_frame * 0.05  # 时间因子（约1秒=3.0）
-    breath_offset = _math.sin(t * 1.2) * 0.4  # 连续呼吸
+    breath_offset = _math.sin(t * 1.2) * 0.6  # 加重呼吸感
 
-    # walking摆动
+    # walking摆动 — 奔跑感：更大步幅+更快频率
     walk_phase = 0.0
     walk_swing = 0.0
+    walk_lean = 0.0  # 奔跑前倾
     if state == "walking":
-        walk_phase = t * 3.0  # 行走频率
-        walk_swing = _math.sin(walk_phase * _math.pi * 2) * 0.5  # 弧度
+        walk_phase = t * 3.5  # 稍快频率（原3.0→3.5）
+        walk_swing = _math.sin(walk_phase * _math.pi * 2) * 0.7  # 更大步幅（原0.5→0.7）
+        walk_lean = 0.25  # 奔跑前倾弧度
+
+    # fleeing逃跑 — 更大前倾+更大步幅
+    flee_swing = 0.0
+    if state == "fleeing":
+        flee_swing = _math.sin(t * 4.0 * _math.pi * 2) * 0.6
 
     # mining挥臂
     mining_angle = 0.0
@@ -555,21 +562,26 @@ def draw_stickman(
         mining_phase = t * 2.5
         mining_angle = _math.sin(mining_phase * _math.pi) * 0.8
 
-    # attacking/fighting挥臂
+    # attacking/fighting — 劈砍弧线：高举→劈下
     attack_offset = 0.0
+    attack_chop = 0.0  # 劈砍角度（从上到下）
     if state in ("attacking", "fighting"):
-        attack_phase = t * 4.0
-        attack_offset = _math.sin(attack_phase * _math.pi) * 0.6
+        attack_phase = t * 3.0  # 稍慢（原4.0→3.0），让劈砍看得清
+        # 正弦摆动 + 半波劈砍
+        attack_offset = _math.sin(attack_phase * _math.pi * 2) * 0.4
+        # 劈砍：手臂从高举（-1.2）劈到前方（0.3），用半波
+        chop_raw = _math.sin(attack_phase * _math.pi)  # 0→1→0
+        attack_chop = -1.2 + chop_raw * 1.5  # -1.2→0.3→-1.2
 
     # climbing攀爬
     climb_phase = 0.0
     if state == "climbing":
         climb_phase = t * 2.0
 
-    # fleeing逃跑
+    # fleeing逃跑前倾
     flee_lean = 0.0
     if state == "fleeing":
-        flee_lean = 0.3  # 身体前倾弧度
+        flee_lean = 0.4  # 更大前倾（原0.3→0.4）
 
     # building建造
     build_phase = 0.0
@@ -599,7 +611,10 @@ def draw_stickman(
     # ── 身体偏移 ──
     body_shift_y = 0.0
     body_lean = 0.0  # 身体前倾角度(弧度)
-    if state == "fighting":
+    if state == "walking":
+        body_lean = walk_lean  # 奔跑前倾
+        body_shift_y = 1.0  # 微微下压
+    elif state == "fighting":
         body_shift_y = 1.5
     elif state == "fleeing":
         body_shift_y = 2.0
@@ -637,10 +652,16 @@ def draw_stickman(
         # 支撑相(腿向后): 膝几乎直(0.05弧度)
         if state == "walking":
             if swing_angle > 0:
-                # 前摆: 膝弯曲大
-                knee_bend = 0.15 + abs(swing_angle) * 1.5
+                # 前摆: 膝弯曲大（奔跑感）
+                knee_bend = 0.2 + abs(swing_angle) * 2.0  # 原系数1.5→2.0
             else:
-                # 后蹬: 膝几乎直
+                # 后蹬: 膝几乎直但微弯
+                knee_bend = 0.08
+        elif state == "fleeing":
+            # 逃跑: 更大步幅
+            if swing_angle > 0:
+                knee_bend = 0.25 + abs(swing_angle) * 2.0
+            else:
                 knee_bend = 0.05
         elif state == "dying":
             knee_bend = 0.3 * dying_progress
@@ -676,17 +697,23 @@ def draw_stickman(
         # 摆动: 肘弯曲随摆动变化
         if state == "walking":
             if swing_angle > 0:
-                # 前摆: 肘弯曲大
-                elbow_bend = 0.3 + abs(swing_angle) * 0.8
+                # 前摆: 肘弯曲大（奔跑感）
+                elbow_bend = 0.4 + abs(swing_angle) * 1.0  # 原系数0.8→1.0
             else:
-                # 后摆: 肘较直
-                elbow_bend = 0.1
+                # 后摆: 肘较直但微弯
+                elbow_bend = 0.15
+        elif state == "fleeing":
+            # 逃跑: 手臂大幅后摆
+            if swing_angle > 0:
+                elbow_bend = 0.5 + abs(swing_angle) * 1.0
+            else:
+                elbow_bend = 0.2
         elif state == "mining" and is_right:
             # 挖矿: 右臂向下挥
             elbow_bend = 0.5 + mining_angle * 0.5
         elif state in ("attacking", "fighting") and is_right:
-            # 攻击: 右臂向前伸
-            elbow_bend = -0.2 + attack_offset * 0.3
+            # 攻击: 劈砍弧线 — 手臂高举过头再劈下
+            elbow_bend = attack_chop if attack_chop != 0.0 else (-0.2 + attack_offset * 0.3)
         elif state == "climbing":
             elbow_bend = -0.8 + _math.sin(climb_phase * _math.pi * 2) * 0.3
         elif state == "building":
@@ -738,21 +765,22 @@ def draw_stickman(
 
     # 手臂: 左臂和右臂
     if state == "walking":
-        # 手臂与腿反向摆动
-        left_arm_swing = -walk_swing * 0.7
-        right_arm_swing = walk_swing * 0.7
+        # 手臂与腿反向摆动（奔跑时摆幅更大）
+        left_arm_swing = -walk_swing * 0.9  # 原0.7→0.9
+        right_arm_swing = walk_swing * 0.9
     elif state == "mining":
         left_arm_swing = 0.1  # 左臂自然
         right_arm_swing = 0.3 + mining_angle  # 右臂挥动
     elif state in ("attacking", "fighting"):
-        left_arm_swing = 0.1
+        # 攻击: 左臂防御姿态, 右臂劈砍
+        left_arm_swing = 0.3  # 左臂微抬（防御/平衡）
         right_arm_swing = 0.5 + attack_offset
     elif state == "climbing":
         left_arm_swing = -0.8 + _math.sin(climb_phase * _math.pi * 2) * 0.3
         right_arm_swing = -0.8 - _math.sin(climb_phase * _math.pi * 2) * 0.3
     elif state == "fleeing":
-        left_arm_swing = -0.4
-        right_arm_swing = -0.4
+        left_arm_swing = -0.5 + flee_swing  # 大幅后摆
+        right_arm_swing = -0.5 - flee_swing
     elif state == "building":
         left_arm_swing = 0.3 + _math.sin(build_phase * _math.pi) * 0.2
         right_arm_swing = 0.3 - _math.sin(build_phase * _math.pi) * 0.2
@@ -1140,8 +1168,8 @@ def draw_stickman_overlay(
         left_arm_swing = -0.8 + _math.sin(climb_phase * _math.pi * 2) * 0.3
         right_arm_swing = -0.8 - _math.sin(climb_phase * _math.pi * 2) * 0.3
     elif state == "fleeing":
-        left_arm_swing = -0.4
-        right_arm_swing = -0.4
+        left_arm_swing = -0.5 + flee_swing  # 大幅后摆
+        right_arm_swing = -0.5 - flee_swing
     elif state == "building":
         left_arm_swing = 0.3 + _math.sin(build_phase * _math.pi) * 0.2
         right_arm_swing = 0.3 - _math.sin(build_phase * _math.pi) * 0.2

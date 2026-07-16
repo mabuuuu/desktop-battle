@@ -116,6 +116,10 @@ class World:
         self.event_bus: EventBus = EventBus()
         self.debug: DebugSystem = DebugSystem(self)
 
+        # AI 调试控制器
+        from src.simulation.debug import DebugController
+        self.debug_ctrl: DebugController = DebugController(self)
+
         # 初始化碰撞回调
         self._setup_collision_handlers()
 

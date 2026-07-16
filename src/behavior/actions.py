@@ -111,7 +111,7 @@ class ExecuteAttack(py_trees.behaviour.Behaviour):
                 unit.attack_cooldown = _get_attack_cooldown(unit)
             return py_trees.common.Status.RUNNING
         else:
-            unit.attack_cooldown -= getattr(world, "elapsed_time", 0.016)
+            # 冷却由 world.update 中的 update_attack_cooldown 统一减少
             return py_trees.common.Status.RUNNING
 
 

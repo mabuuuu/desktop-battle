@@ -187,7 +187,7 @@ class InfoPanel:
         # 标题 — 使用 overlay 原生文本支持中文
         overlay = getattr(self._world, 'overlay', None)
         if overlay is not None:
-            overlay.draw_text(x + 6, y + 2, "桌面大乱斗", (200, 200, 255, 255), 14.0)
+            overlay.draw_text(x + 6, y + 2, "Desktop Battle", (200, 200, 255, 255), 14.0)
             # 关闭按钮
             overlay.draw_text(x + w - 18, y + 2, "×", (255, 100, 100, 255), 14.0)
 
@@ -298,7 +298,7 @@ class InfoPanel:
         overlay.draw_rect(x, y, w, self.HEADER_HEIGHT, (40, 40, 70, 230), 0)
 
         # 标题文本
-        overlay.draw_text(x + 6, y + 2, "桌面大乱斗", (200, 200, 255, 255), 14.0)
+        overlay.draw_text(x + 6, y + 2, "Desktop Battle", (200, 200, 255, 255), 14.0)
         overlay.draw_text(x + w - 18, y + 2, "×", (255, 100, 100, 255), 14.0)
 
         # 分隔线
