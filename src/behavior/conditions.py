@@ -64,11 +64,11 @@ class HPCheck(py_trees.behaviour.Behaviour):
 
 
 class EnemyInSight(py_trees.behaviour.Behaviour):
-    """视野范围内检测到敌人.
+    """视野范围内检测到敌人（使用感知系统限制）.
 
     Blackboard:
         unit: Unit 引用
-        world: World 引用 (需要提供所有单位列表)
+        world: World 引用
     """
 
     def __init__(self, name: str = "Enemy In Sight") -> None:
@@ -81,15 +81,21 @@ class EnemyInSight(py_trees.behaviour.Behaviour):
         if unit is None or world is None or not unit.alive:
             return py_trees.common.Status.FAILURE
 
-        sx, sy = unit.screen_position(world.screen_height)
-        for other in world.units:
-            if not other.alive or other.faction_name == unit.faction_name:
-                continue
-            ox, oy = other.screen_position(world.screen_height)
-            if _distance(sx, sy, ox, oy) < unit.perception_range:
-                bb.set("nearest_enemy", other)
-                bb.set("nearest_enemy_dist", _distance(sx, sy, ox, oy))
-                return py_trees.common.Status.SUCCESS
+        # 使用感知系统：只有视野/感知范围内的敌人才算"看到"
+        from src.simulation.perception import PerceptionSystem
+        visible_enemies = PerceptionSystem.get_visible_enemies(unit, world)
+
+        if visible_enemies:
+            # 选最近的
+            sx, sy = unit.screen_position(world.screen_height)
+            nearest = min(visible_enemies,
+                          key=lambda e: _distance(sx, sy,
+                                                   e.screen_position(world.screen_height)[0],
+                                                   e.screen_position(world.screen_height)[1]))
+            ox, oy = nearest.screen_position(world.screen_height)
+            bb.set("nearest_enemy", nearest)
+            bb.set("nearest_enemy_dist", _distance(sx, sy, ox, oy))
+            return py_trees.common.Status.SUCCESS
         return py_trees.common.Status.FAILURE
 
 
@@ -378,3 +384,40 @@ class IsScout(py_trees.behaviour.Behaviour):
         if unit.role == UnitRole.SCOUT:
             return py_trees.common.Status.SUCCESS
         return py_trees.common.Status.FAILURE
+
+
+class Outnumbered(py_trees.behaviour.Behaviour):
+    """敌军数量多于友军（在感知范围内）.
+
+    Blackboard:
+        unit: Unit
+        world: World
+    """
+
+    def __init__(self, name: str = "Outnumbered") -> None:
+        super().__init__(name)
+
+    def update(self) -> py_trees.common.Status:
+        bb = _get_global_blackboard()
+        unit = _get_unit_from_blackboard(bb)
+        world = _bb_get(bb, "world")
+        if unit is None or world is None or not unit.alive:
+            return py_trees.common.Status.FAILURE
+
+        sx, sy = unit.screen_position(world.screen_height)
+        allies = 0
+        enemies = 0
+        for other in world.units:
+            if not other.alive or other.unit_id == unit.unit_id:
+                continue
+            ox, oy = other.screen_position(world.screen_height)
+            dist = _distance(sx, sy, ox, oy)
+            if dist > unit.perception_range:
+                continue
+            if other.faction_name == unit.faction_name:
+                allies += 1
+            else:
+                enemies += 1
+
+        # 敌军多于友军+自身时触发
+        return py_trees.common.Status.SUCCESS if enemies > allies + 1 else py_trees.common.Status.FAILURE

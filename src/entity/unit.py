@@ -255,24 +255,7 @@ class Unit:
         if not self.alive:
             return
         sx, sy = self.screen_position(screen_height)
-        # 身体中心在屏幕上的位置 (物理体中心)
-        from src.render.sprite import draw_health_bar, draw_stickman
-
-        # 绘制血条
-        hp_ratio = self.hp / self.max_hp
-        bar_width = 10
-        bar_y = sy - self.config.stickman_height - 4
-        draw_health_bar(
-            buffer,
-            sx - bar_width / 2,
-            bar_y,
-            bar_width,
-            2,
-            self.hp,
-            self.max_hp,
-            self._rgba_color,
-            (40, 40, 40, 180),
-        )
+        from src.render.sprite import draw_stickman
 
         # 绘制火柴人
         weapon_vis = self.get_weapon_visual()

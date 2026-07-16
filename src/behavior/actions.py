@@ -693,3 +693,99 @@ def _get_attack_cooldown(unit: Unit) -> float:
         except AttributeError:
             pass
     return 1.5  # 徒手冷却
+
+
+class RequestHelp(py_trees.behaviour.Behaviour):
+    """求援: 战场劣势时派人回基地求援.
+
+    触发条件: 士气低 + 附近敌军多于友军
+    行为: 发出求援事件，附近的友军可能响应
+    Blackboard:
+        unit: Unit
+        world: World
+    """
+
+    def __init__(self, name: str = "Request Help") -> None:
+        super().__init__(name)
+
+    def update(self) -> py_trees.common.Status:
+        bb = py_trees.blackboard.Blackboard()
+        unit, world = _get_unit_and_world(bb)
+        if unit is None or world is None or not unit.alive:
+            return py_trees.common.Status.FAILURE
+
+        # 发起求援
+        simulation = getattr(world, 'simulation', None)
+        if simulation is not None:
+            simulation.request_help(unit)
+
+        # 发布求援事件
+        event_bus = getattr(world, 'event_bus', None)
+        if event_bus is not None:
+            sx, sy = unit.screen_position(world.screen_height)
+            from src.simulation.events import GameEvent, EventType
+            event_bus.publish(GameEvent(
+                event_type=EventType.HELP_REQUEST,
+                x=sx, y=sy,
+                faction_name=unit.faction_name,
+                source_unit_id=unit.unit_id,
+                created_time=world.elapsed_time,
+                ttl=15.0,
+            ))
+
+        # 求援后继续战斗
+        return py_trees.common.Status.SUCCESS
+
+
+class RespondToHelp(py_trees.behaviour.Behaviour):
+    """响应求援: 检查感知范围内的求援事件.
+
+    看到求援者后决定: 去战场支援 或 回基地报信
+    Blackboard:
+        unit: Unit
+        world: World
+    """
+
+    def __init__(self, name: str = "Respond To Help") -> None:
+        super().__init__(name)
+
+    def update(self) -> py_trees.common.Status:
+        bb = py_trees.blackboard.Blackboard()
+        unit, world = _get_unit_and_world(bb)
+        if unit is None or world is None or not unit.alive:
+            return py_trees.common.Status.FAILURE
+
+        event_bus = getattr(world, 'event_bus', None)
+        if event_bus is None:
+            return py_trees.common.Status.FAILURE
+
+        from src.simulation.events import EventType
+        help_events = event_bus.get_events_for_unit(
+            unit, world, world.elapsed_time,
+            event_types=[EventType.HELP_REQUEST],
+        )
+
+        if not help_events:
+            return py_trees.common.Status.FAILURE
+
+        # 找最近的求援事件
+        sx, sy = unit.screen_position(world.screen_height)
+        nearest_event = min(help_events, key=lambda e: _distance(sx, sy, e.x, e.y))
+
+        # 根据角色和士气决定
+        from src.entity.unit import UnitRole
+        simulation = getattr(world, 'simulation', None)
+        if simulation is not None:
+            mind = simulation.get_mind(unit.unit_id)
+            if unit.role == UnitRole.SOLDIER or mind.morale > 0.5:
+                # 前往支援
+                unit.state = UnitState.WALKING
+                unit.move_toward(nearest_event.x)
+            else:
+                # 回基地报信
+                faction = _find_faction(unit.faction_name, world)
+                if faction is not None:
+                    unit.state = UnitState.FLEEING
+                    unit.move_toward(faction.spawn_x)
+
+        return py_trees.common.Status.SUCCESS

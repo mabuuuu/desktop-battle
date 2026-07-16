@@ -31,6 +31,8 @@ from src.behavior.actions import (
     MoveToWeapon,
     MoveTowardEnemy,
     Patrol,
+    RequestHelp,
+    RespondToHelp,
     ScoutArea,
     Wander,
 )
@@ -48,6 +50,7 @@ from src.behavior.conditions import (
     IsScout,
     NeedResources,
     NoWeaponEquipped,
+    Outnumbered,
     WeaponOnGround,
 )
 
@@ -178,12 +181,14 @@ def create_soldier_behavior_tree(unit_name: str = "Soldier") -> py_trees.behavio
 
     优先级:
     1. 逃跑 (HP极低)
-    2. 攻击 (敌人在攻击范围)
-    3. 追击 (敌人可见)
-    4. 巡逻 (向敌方移动)
-    5. 拾取武器
-    6. 运送资源 (如果携带)
-    7. 漫步
+    2. 求援 (劣势时请求支援)
+    3. 攻击 (敌人在攻击范围)
+    4. 追击 (敌人可见)
+    5. 响应求援 (感知到友军求援)
+    6. 巡逻 (向敌方移动)
+    7. 拾取武器
+    8. 运送资源 (如果携带)
+    9. 漫步
     """
     root = py_trees.composites.Selector(name=f"{unit_name}_Soldier", memory=False)
 
@@ -193,22 +198,31 @@ def create_soldier_behavior_tree(unit_name: str = "Soldier") -> py_trees.behavio
     flee_seq.add_child(FleeToBase(name="Flee"))
     root.add_child(flee_seq)
 
-    # 2. 攻击
+    # 2. 求援 (劣势)
+    help_seq = py_trees.composites.Sequence(name="RequestHelp", memory=True)
+    help_seq.add_child(Outnumbered(name="Outnumbered"))
+    help_seq.add_child(RequestHelp(name="CallHelp"))
+    root.add_child(help_seq)
+
+    # 3. 攻击
     attack_seq = py_trees.composites.Sequence(name="Attack", memory=True)
     attack_seq.add_child(EnemyInAttackRange(name="Enemy_In_Range"))
     attack_seq.add_child(ExecuteAttack(name="Attack"))
     root.add_child(attack_seq)
 
-    # 3. 追击
+    # 4. 追击
     chase_seq = py_trees.composites.Sequence(name="Chase", memory=True)
     chase_seq.add_child(EnemyInSight(name="Enemy_Visible"))
     chase_seq.add_child(ChaseEnemy(name="Chase"))
     root.add_child(chase_seq)
 
-    # 4. 巡逻
+    # 5. 响应求援
+    root.add_child(RespondToHelp(name="RespondHelp"))
+
+    # 6. 巡逻
     root.add_child(Patrol(name="Patrol"))
 
-    # 5. 拾取武器
+    # 7. 拾取武器
     pickup_seq = py_trees.composites.Sequence(name="Pickup", memory=True)
     pickup_seq.add_child(NoWeaponEquipped(name="No_Weapon"))
     pickup_seq.add_child(WeaponOnGround(name="Weapon_Near"))
@@ -216,14 +230,14 @@ def create_soldier_behavior_tree(unit_name: str = "Soldier") -> py_trees.behavio
     pickup_seq.add_child(EquipWeapon(name="Equip"))
     root.add_child(pickup_seq)
 
-    # 6. 运送 (如果有资源)
+    # 8. 运送 (如果有资源)
     transport_seq = py_trees.composites.Sequence(name="Transport", memory=True)
     transport_seq.add_child(CarryingResources(name="Has_Res"))
     transport_seq.add_child(MoveToBase(name="To_Base"))
     transport_seq.add_child(DepositResources(name="Deposit"))
     root.add_child(transport_seq)
 
-    # 7. 漫步
+    # 9. 漫步
     root.add_child(Wander(name="Wander"))
 
     return root

@@ -37,6 +37,7 @@ class TrayManager:
             ("暂停 / 继续", None, self._on_toggle_pause),
             ("信息面板", None, self._on_toggle_panel),
             ("设置", None, self._on_open_settings),
+            ("调试模式", None, self._on_toggle_debug),
         )
 
         self._systray: SysTrayIcon | None = None
@@ -89,6 +90,15 @@ class TrayManager:
                 self._settings_dialog.show()
         except Exception:
             pass
+
+    def _on_toggle_debug(self, systray: SysTrayIcon) -> None:
+        """切换调试模式."""
+        if self._game_loop.world is not None:
+            debug = getattr(self._game_loop.world, 'debug', None)
+            if debug is not None:
+                enabled = debug.toggle()
+                from loguru import logger
+                logger.info("Debug mode: {}", "ON" if enabled else "OFF")
 
     def _on_quit(self, systray: SysTrayIcon) -> None:
         """退出程序."""

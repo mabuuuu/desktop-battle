@@ -108,6 +108,14 @@ class World:
         # ── Phase 14: 阵营分裂 ──
         self.schism_manager: SchismManager = SchismManager(self)
 
+        # ── 拟真系统 ──
+        from src.simulation.realism import SimulationSystem
+        from src.simulation.events import EventBus
+        from src.simulation.debug import DebugSystem
+        self.simulation: SimulationSystem = SimulationSystem(self)
+        self.event_bus: EventBus = EventBus()
+        self.debug: DebugSystem = DebugSystem(self)
+
         # 初始化碰撞回调
         self._setup_collision_handlers()
 
@@ -549,6 +557,12 @@ class World:
         self.schism_manager.update(dt)
         self.schism_manager.update_arguing_units(dt)
 
+        # ── 拟真系统 ──
+        self.simulation.update(dt)
+
+        # ── 事件总线清理 ──
+        self.event_bus.cleanup(self.elapsed_time)
+
         # 更新面板
         if self._panel is not None:
             self._panel.update(self.elapsed_time)
@@ -748,6 +762,9 @@ class World:
         # 8. 信息面板
         if self._panel is not None and self._panel.visible:
             self._panel.render(buffer)
+
+        # 9. 调试覆盖层
+        self.debug.render_debug_overlay(buffer)
 
         # 提交到 overlay
         overlay.render_numpy_buffer(buffer, "game_frame")
