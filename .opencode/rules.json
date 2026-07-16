@@ -1,0 +1,32 @@
+{
+  "rules": [
+    {
+      "id": "docs-first",
+      "priority": "critical",
+      "title": "文档优先开发流程",
+      "description": "所有改动必须先更新设计文档，后更新代码，最后更新变更文档。代码必须与文档保持一致。",
+      "steps": [
+        "1. 需求变更/新功能 → 先修改对应设计文档（明确规格）",
+        "2. 更新 PLAN.md（记录本次改动目标和新Phase）",
+        "3. 实现代码",
+        "4. 更新 CHANGELOG.md（记录变更内容）",
+        "5. 验证代码与文档一致",
+        "6. Git 提交并 Push（提交信息引用文档变更）"
+      ],
+      "enforcement": "任何代码修改前必须检查对应文档是否已更新。如果文档未更新，先更新文档再写代码。",
+      "docMapping": {
+        "UNIT_DESIGN.md": "单位属性、外观、角色、状态相关变更",
+        "BEHAVIOR_DESIGN.md": "行为树、AI决策、拟真系统、感知系统、事件系统",
+        "BUILDING_DESIGN.md": "建筑类型、组装系统、材料零件",
+        "WEAPON_DESIGN.md": "武器类型、制作链、伤害",
+        "PHYSICS_DESIGN.md": "物理、碰撞、攀爬、地面",
+        "TECHNICAL_SPEC.md": "技术栈、架构、模块、渲染管线",
+        "PROJECT_OVERVIEW.md": "项目愿景、核心玩法、项目范围",
+        "SCHISM_DESIGN.md": "阵营分裂机制",
+        "LOGGING_DESIGN.md": "日志系统",
+        "PLAN.md": "阶段计划、每次改动目标",
+        "CHANGELOG.md": "变更记录（每次变更时必更新）"
+      }
+    }
+  ]
+}

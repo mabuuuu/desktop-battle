@@ -15,6 +15,7 @@
 | 配置 | `pydantic` | >=2.0 | 数据模型验证、配置管理 |
 | 托盘图标 | `infi.systray` | >=0.1 | Windows系统托盘图标 + 右键菜单 |
 | HTTP客户端 | `httpx` | >=0.27 | 外部AI API调用（OpenAI兼容接口） |
+| GUI弹窗 | `tkinter` | 内置 | 设置弹窗 |
 
 ### 可选依赖（后期）
 
@@ -112,9 +113,16 @@ src/
 │   ├── crafting.py          # 制作系统
 │   └── production.py        # 兵营生产队列
 ├── ui/
-│   ├── tray.py              # 系统托盘图标 + 右键菜单
-│   ├── panel.py             # 信息面板（双方参数展示）
-│   └── settings.py          # 设置对话框
+│   ├── tray.py              # 系统托盘图标 + 右键菜单(含调试模式)
+│   ├── panel.py             # 信息面板（中文/可缩放/拖拽）
+│   ├── settings.py          # 设置持久化管理
+│   └── settings_dialog.py   # tkinter设置弹窗(速度/缩放/重力等)
+├── simulation/
+│   ├── perception.py        # 视野感知系统(前方扇形/身后/听觉)
+│   ├── realism.py           # 拟真系统(求援/犹豫/士气/情绪)
+│   ├── events.py            # 事件总线(位置感知事件传播)
+│   ├── building_assembly.py # 建筑组装系统(材料形状/逐步拼装)
+│   └── debug.py             # 调试模式(选中/指定行为/信息显示)
 ├── ai/
 │   ├── client.py            # 外部AI客户端（OpenAI兼容API）
 │   ├── strategy.py          # AI策略解析与执行

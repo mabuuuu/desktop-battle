@@ -2,74 +2,86 @@
 
 ## 行为系统概述
 
-单位的行为由**行为树 (Behavior Tree)** 驱动，使用 `py_trees` 实现。每个单位拥有一个独立的行为树实例，每3帧 (20Hz) tick一次。
+单位的行为由**行为树 (Behavior Tree)** 驱动，使用 `py_trees` 实现。每个单位根据**角色 (Role)** 拥有独立的定制行为树实例，每2帧 (30Hz) tick一次。
 
 阵营级别的决策通过**共享黑板 (Blackboard)** 协调，实现多单位协作。
 
-## 行为树架构
+**拟真系统** (`src/simulation/realism.py`) 管理单位心理状态（士气/情绪/犹豫），与行为树联动。
 
-### 三层架构
+**感知系统** (`src/simulation/perception.py`) 限制单位信息获取范围，只有视野/感知内的事件才能触发行为。
 
-```
-Layer 1: 阵营策略 (Blackboard 共享)
-  ↓ 写入策略目标
-Layer 2: 单位行为树 (每单位独立)
-  ↓ 产生动作
-Layer 3: 动作执行 (物理/动画)
-```
+**事件总线** (`src/simulation/events.py`) 管理事件传播，事件带位置属性，只在感知范围内传播。
 
-### 单位行为树结构
+## 角色行为树架构
+
+每种角色有独立行为树，优先级不同:
+
+### 生产者 (Gatherer) 行为树
 
 ```
-Root (Selector - 优先级从上到下)
-│
-├── Survival (Sequence)                    # 生存 — 最高优先级
-│   ├── Condition: HP < 20%
-│   └── Action: FleeToBase()
-│
-├── Combat (Selector)                      # 战斗 — 第二优先级
-│   ├── MeleeAttack (Sequence)
-│   │   ├── Condition: EnemyInAttackRange()
-│   │   └── Action: ExecuteAttack()
-│   ├── ChaseEnemy (Sequence)
-│   │   ├── Condition: EnemyInSight()
-│   │   └── Action: MoveTowardEnemy()
-│   └── ReturnToFormation (Sequence)
-│       ├── Condition: CombatDone()
-│       └── Action: MoveToRallyPoint()
-│
-├── Construction (Sequence)                # 建造 — 第三优先级
-│   ├── Condition: HasBuildOrder()
-│   ├── Condition: HasResources()
-│   ├── Action: MoveToBuildSite()
-│   └── Action: Build()
-│
-├── Crafting (Sequence)                    # 制作 — 第四优先级
-│   ├── Condition: HasCraftOrder()
-│   ├── Condition: AtWorkbench()
-│   └── Action: CraftWeapon()
-│
-├── ResourceDelivery (Sequence)            # 资源运送 — 第五优先级
-│   ├── Condition: CarryingResources()
-│   ├── Action: MoveToBase()
-│   └── Action: DepositResources()
-│
-├── ResourceGathering (Sequence)           # 资源采集 — 第六优先级
-│   ├── Condition: NeedResources()
-│   ├── Condition: NotCarryingFull()
-│   ├── Action: MoveToResourceNode()
-│   └── Action: GatherResources()
-│
-├── PickupWeapon (Sequence)                # 拾取武器
-│   ├── Condition: NoWeaponEquipped()
-│   ├── Condition: WeaponOnGround()
-│   ├── Action: MoveToWeapon()
-│   └── Action: EquipWeapon()
-│
-└── Explore (Sequence)                     # 探索 — 最低优先级
-    ├── Condition: NoHigherPriorityTask()
-    └── Action: Wander()
+Root (Selector)
+├── 逃跑 (HP低 → FleeToBase)
+├── 运送资源 (满载 → MoveToBase → Deposit)
+├── 采集 (未满载 → MoveToResourceNode → Gather)
+├── 制作 (有制作订单 → MoveToWorkbench → AtWorkbench → Craft)
+├── 拾取武器 (空手+地上有武器 → MoveToWeapon → Equip)
+└── 漫步 (Wander)
 ```
+
+### 建造者 (Builder) 行为树
+
+```
+Root (Selector)
+├── 逃跑 (HP低 → FleeToBase)
+├── 建造 (有建造订单 → MoveToBuildSite → Build)
+├── 制作 (有制作订单 → MoveToWorkbench → AtWorkbench → Craft)
+├── 运送资源 (CarryingResources → MoveToBase → Deposit)
+├── 辅助采集 (NeedResources → MoveToResourceNode → Gather)
+├── 拾取武器
+└── 漫步
+```
+
+### 战士 (Soldier) 行为树
+
+```
+Root (Selector)
+├── 逃跑 (HP极低 → FleeToBase)
+├── 求援 (Outnumbered → RequestHelp)
+├── 攻击 (EnemyInAttackRange → ExecuteAttack)
+├── 追击 (EnemyInSight → ChaseEnemy)  [感知系统限制]
+├── 响应求援 (RespondToHelp)
+├── 巡逻 (Patrol: 前线↔基地交替)
+├── 拾取武器
+├── 运送资源
+└── 漫步
+```
+
+### 侦察 (Scout) 行为树
+
+```
+Root (Selector)
+├── 逃跑 (HP低 → FleeToBase)
+├── 侦察 (ScoutArea: 向敌方渗透→发现敌人→返回报告)
+├── 攻击 (EnemyInAttackRange → ExecuteAttack)
+├── 拾取武器
+└── 巡逻
+```
+
+## 感知系统
+
+### 视野配置
+
+| 范围类型 | 距离 | 角度 | 说明 |
+|---------|------|------|------|
+| 前方视野 | 100 px | 120° 扇形 | 朝向方向的可见范围 |
+| 身后感知 | 40 px | 360° 圆形 | 身后近距离可感知 |
+| 听觉范围 | 60 px | 360° 圆形 | 全方向听觉 |
+
+### 感知影响
+
+- `EnemyInSight` 条件: 只检测**前方视野+身后感知**范围内的敌人
+- 求援响应: 只有**感知到**求援者才会响应
+- 事件传播: 事件带位置，只有在感知范围内的单位才能收到
 
 ## 阵营策略 (Blackboard)
 
@@ -100,29 +112,71 @@ class FactionBlackboard:
 
 ### 策略决策规则
 
-| 条件 | 策略 | 行为 |
+| 条件 | 策略 | 角色比例 |
+|------|------|---------|
+| 初始/资源不足 | expand | 3采集:1建造:1战士 |
+| 人口>=6 | rush | 1采集:4战士:1侦察 |
+| 人口<3 | defense | 2采集:1建造:2战士 |
+| 木材>=30+矿石>=10 | tech | 2采集:2建造:1战士 |
+
+### 动态角色分配
+
+- 每次策略变更时，`auto_assign_roles` 重新计算角色需求
+- 空闲单位优先分配到缺人角色
+- 角色变更时**自动重建行为树**（`_rebuild_bt_if_role_changed`）
+
+## 拟真系统
+
+### 单位心理模型 (UnitMind)
+
+| 属性 | 范围 | 说明 |
 |------|------|------|
-| 初始阶段 (前60秒) | expand | 优先采集 → 建造工具台 → 制作武器 |
-| 发现敌方 | engage | 分配战斗单位追击 |
-| 敌方接近基地 | defend | 全体回防 |
-| 我方单位 > 敌方 1.5倍 | attack | 全体进攻 |
-| 资源充足且无威胁 | expand | 继续发展经济 |
+| 士气 (morale) | 0.0~1.0 | 受HP比例/友军数/敌军数影响 |
+| 情绪 (emotion) | calm/alert/fearful/brave/hesitant | 由士气自动推算 |
+| 犹豫计时 | 秒 | >0时处于犹豫状态 |
+| 决策冷却 | 秒 | 防止频繁切换决策 |
 
-### 单位角色分配
+### 求援行为
 
-阵营根据当前策略自动分配单位角色：
+```
+战士在战场劣势（敌军>友军+1）
+  ↓
+发出HelpRequest + HelpRequest事件
+  ↓
+感知范围内友军40%概率响应
+  ↓
+响应者决定: 去战场支援 / 回基地报信
+```
 
-| 角色 | 行为 | 优先获得武器 |
-|------|------|------------|
-| 采集者 (Gatherer) | 采集 → 运送 → 采集循环 | 否 |
-| 建造者 (Builder) | 响应建造/制作订单 | 否 |
-| 战士 (Soldier) | 巡逻 → 发现敌人 → 战斗 | 是 |
-| 探索者 (Scout) | 远距离探索 | 是 |
+### 犹豫行为
 
-分配逻辑：
-- 初始5人：3采集者 + 1建造者 + 1探索者
-- 武器优先给战士和探索者
-- 新生产的单位根据策略需求分配角色
+```
+战士前往战场途中
+  ↓
+发现后方5+人从事生产
+  ↓
+20%概率犹豫1.5~3秒（30秒冷却期）
+  ↓
+犹豫结束 → 返回基地从事生产
+```
+
+避免所有人同时犹豫: 概率触发 + 决策冷却
+
+## 事件总线
+
+### 事件类型
+
+| 类型 | 说明 | TTL |
+|------|------|-----|
+| HELP_REQUEST | 求援请求 | 15秒 |
+| ENEMY_SPOTTED | 发现敌人 | 10秒 |
+| UNDER_ATTACK | 遭受攻击 | 10秒 |
+| BUILDING_COMPLETE | 建造完成 | 10秒 |
+| RESOURCE_FOUND | 发现资源 | 10秒 |
+| SCHISM_WARNING | 分裂预警 | 10秒 |
+| CARRY_MATERIAL | 搬运材料 | 10秒 |
+
+事件带位置属性(x,y)，只有感知范围内的单位能收到。
 
 ## 行为详细定义
 
@@ -211,17 +265,26 @@ class FactionBlackboard:
 
 ## 行为优先级总结
 
+### 战士行为树优先级
+
 | 优先级 | 行为 | 触发条件 |
 |--------|------|---------|
-| 1 (最高) | 逃跑 | HP < 20% |
-| 2 | 战斗-攻击 | 敌人在攻击范围内 |
-| 3 | 战斗-追击 | 敌人在视野内 |
-| 4 | 建造 | 有建造订单且有资源 |
-| 5 | 制作 | 有制作订单且在工具台旁 |
-| 6 | 运送资源 | 携带资源已满 |
-| 7 | 采集资源 | 需要资源且携带未满 |
-| 8 | 拾取武器 | 空手且地面有武器 |
-| 9 (最低) | 探索 | 无更高优先级任务 |
+| 1 (最高) | 逃跑 | HP极低 |
+| 2 | 求援 | 敌军多于友军 |
+| 3 | 攻击 | 敌人在攻击范围内 |
+| 4 | 追击 | 敌人在感知范围内 |
+| 5 | 响应求援 | 感知到友军求援事件 |
+| 6 | 巡逻 | 无更紧急任务 |
+| 7 | 拾取武器 | 空手且地面有武器 |
+| 8 | 运送资源 | 携带资源 |
+| 9 (最低) | 漫步 | 无其他任务 |
+
+## 动画驱动
+
+- 动画从**帧计数**改为**时间连续驱动**（anim_time）
+- 呼吸/行走/攻击等动画用连续sin函数，不再阶跃
+- 行为树tick间隔: 2帧 (30Hz)
+- 状态切换时有过渡混合（state_blend: ~7帧过渡）
 
 ## 行为日志
 

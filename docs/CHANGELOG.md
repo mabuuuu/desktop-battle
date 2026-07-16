@@ -138,3 +138,56 @@
 - `docs/UNIT_DESIGN.md` — 新增叛军阵营外观颜色（红方·叛军#44FFEE青色, 蓝方·叛军#FFAA44橙色）
 - `docs/TECHNICAL_SPEC.md` — 新增src/entity/schism.py模块
 - `docs/PLAN.md` — 新增Phase 14阵营分裂机制
+
+---
+
+## [2026-07-16] - 关节式火柴人 + 移动速度可配置
+
+### 文档更新
+- `docs/UNIT_DESIGN.md` — 火柴人改为关节式骨骼(肩→肘→手, 髋→膝→脚), 速度更新(红方130/蓝方120)
+
+### 代码变更
+- `src/render/sprite.py` — draw_stickman重写为关节系统
+- `src/core/config.py` — FactionConfig默认速度翻倍, 新增move_speed_multiplier
+- `src/ui/settings.py` — 新增move_speed_multiplier持久化
+- `src/entity/unit.py` — move_toward应用move_speed_multiplier
+
+---
+
+## [2026-07-16] - 五大升级: 中文化+面板缩放+设置弹窗+流畅度+行为树职责系统
+
+### 文档更新
+- `docs/BEHAVIOR_DESIGN.md` — 角色行为树(gatherer/builder/soldier/scout), 动态角色分配
+- `docs/TECHNICAL_SPEC.md` — 新增settings_dialog.py, simulation/模块
+- `docs/PROJECT_OVERVIEW.md` — 新增角色系统/拟真/感知/事件/组装/调试/分裂
+
+### 代码变更
+- `src/ui/panel.py` — 中文化+可缩放(200~600px)
+- `src/ui/settings_dialog.py` — 新建: tkinter设置弹窗(6个滑块)
+- `src/render/sprite.py` — 动画时间连续驱动, tick间隔2帧
+- `src/entity/unit.py` — UnitRole枚举, state_blend过渡混合
+- `src/behavior/trees.py` — 每种角色独立行为树
+- `src/behavior/actions.py` — 新增Patrol, ScoutArea
+- `src/behavior/conditions.py` — 新增IsGatherer/IsBuilder/IsSoldier/IsScout
+- `src/behavior/blackboard.py` — auto_assign_roles按策略动态分配
+- `src/core/world.py` — 角色变更重建行为树, rush策略
+
+---
+
+## [2026-07-16] - 拟真系统+感知+事件+建筑组装+调试模式+血条移除
+
+### 文档更新
+- `docs/UNIT_DESIGN.md` — 血条不展示, UnitRole枚举, 巡逻/侦察状态, 关节式结构
+- `docs/BEHAVIOR_DESIGN.md` — 感知系统/拟真系统/事件总线/求援/犹豫章节
+- `docs/BUILDING_DESIGN.md` — 建筑组装系统(材料形状/零件清单/组装流程)
+- `docs/TECHNICAL_SPEC.md` — simulation/模块, tkinter依赖
+- `docs/PROJECT_OVERVIEW.md` — 建筑组装/拟真/感知/事件/调试
+
+### 代码变更
+- `src/entity/unit.py` — 删除血条, 新增PATROLLING/SCOUTING, UnitRole
+- `src/simulation/` — 新建5个模块(perception/realism/events/building_assembly/debug)
+- `src/behavior/actions.py` — 新增RequestHelp/RespondToHelp
+- `src/behavior/conditions.py` — EnemyInSight改用感知系统, 新增Outnumbered
+- `src/behavior/trees.py` — 战士行为树新增求援+响应分支
+- `src/core/world.py` — 新增simulation/event_bus/debug, 调试覆盖层渲染
+- `src/ui/tray.py` — 新增"调试模式"菜单
