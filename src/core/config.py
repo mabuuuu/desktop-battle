@@ -69,7 +69,7 @@ class GameConfig(BaseModel):
     target_fps: int = Field(default=60, description="目标帧率")
     physics_dt: float = Field(default=1.0 / 60.0, description="物理步长(秒)")
     behavior_tick_interval: int = Field(
-        default=3, description="行为树每N帧tick一次(20Hz)"
+        default=2, description="行为树每N帧tick一次(30Hz)"
     )
 
     # ── 物理引擎 ──

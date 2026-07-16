@@ -31,10 +31,12 @@ class InfoPanel:
     """
 
     # 面板尺寸
-    DEFAULT_WIDTH: int = 280
+    DEFAULT_WIDTH: int = 300
     HEADER_HEIGHT: int = 24
     ROW_HEIGHT: int = 16
     PADDING: int = 6
+    MIN_WIDTH: int = 200
+    MAX_WIDTH: int = 600
 
     def __init__(
         self,
@@ -49,8 +51,11 @@ class InfoPanel:
         self._width: int = width or self.DEFAULT_WIDTH
         self._visible: bool = True
         self._dragging: bool = False
+        self._resizing: bool = False
         self._drag_offset_x: int = 0
         self._drag_offset_y: int = 0
+        self._resize_start_x: int = 0
+        self._resize_start_width: int = 0
         self._last_refresh: float = 0.0
         self._refresh_interval: float = 0.5  # 0.5秒刷新
 
@@ -71,7 +76,7 @@ class InfoPanel:
         return self._visible
 
     def handle_mouse_down(self, mx: int, my: int) -> bool:
-        """处理鼠标按下事件，用于拖拽.
+        """处理鼠标按下事件，用于拖拽和缩放.
 
         Returns:
             是否消费了事件
@@ -87,6 +92,14 @@ class InfoPanel:
             self._visible = False
             return True
 
+        # 右边缘缩放 (8px热区)
+        resize_zone_x = self._x + self._width - 8
+        if abs(mx - (self._x + self._width)) < 8 and self._y <= my <= self._y + h:
+            self._resizing = True
+            self._resize_start_x = mx
+            self._resize_start_width = self._width
+            return True
+
         # 拖拽标题栏
         if self._x <= mx <= self._x + self._width and self._y <= my <= self._y + self.HEADER_HEIGHT:
             self._dragging = True
@@ -97,14 +110,19 @@ class InfoPanel:
         return False
 
     def handle_mouse_move(self, mx: int, my: int) -> None:
-        """处理鼠标移动（拖拽）."""
+        """处理鼠标移动（拖拽/缩放）."""
         if self._dragging:
             self._x = mx - self._drag_offset_x
             self._y = my - self._drag_offset_y
+        elif self._resizing:
+            dx = mx - self._resize_start_x
+            new_width = self._resize_start_width + dx
+            self._width = max(self.MIN_WIDTH, min(self.MAX_WIDTH, new_width))
 
     def handle_mouse_up(self) -> None:
-        """结束拖拽."""
+        """结束拖拽/缩放."""
         self._dragging = False
+        self._resizing = False
 
     def update(self, now: float) -> None:
         """定期刷新数据."""
@@ -145,10 +163,10 @@ class InfoPanel:
             })
 
     def render(self, buffer: np.ndarray) -> None:
-        """渲染面板到 RGBA 缓冲.
+        """渲染面板（使用 overlay 原生 API 支持中文）.
 
         Args:
-            buffer: numpy (H, W, 4) RGBA 缓冲
+            buffer: numpy (H, W, 4) RGBA 缓冲（用于背景绘制）
         """
         if not self._visible:
             return
@@ -159,20 +177,19 @@ class InfoPanel:
         x, y, w = self._x, self._y, self._width
 
         # 半透明背景
-        bg_color = (20, 20, 40, 210)
+        bg_color = (20, 20, 40, 180)
         draw_rect(buffer, float(x), float(y), w, panel_h, bg_color, 0)
 
         # 标题栏
         header_bg = (40, 40, 70, 230)
         draw_rect(buffer, float(x), float(y), w, self.HEADER_HEIGHT, header_bg, 0)
 
-        # 标题文字
-        draw_text(buffer, float(x + 6), float(y + 4), "Desktop Battle", (200, 200, 255, 255), 10)
-
-        # 关闭按钮
-        cx = x + w - 16
-        cy = y + 4
-        draw_text(buffer, float(cx), float(cy), "X", (255, 100, 100, 255), 10)
+        # 标题 — 使用 overlay 原生文本支持中文
+        overlay = getattr(self._world, 'overlay', None)
+        if overlay is not None:
+            overlay.draw_text(x + 6, y + 2, "桌面大乱斗", (200, 200, 255, 255), 14.0)
+            # 关闭按钮
+            overlay.draw_text(x + w - 18, y + 2, "×", (255, 100, 100, 255), 14.0)
 
         # 分隔线
         line_y = y + self.HEADER_HEIGHT
@@ -181,7 +198,11 @@ class InfoPanel:
         # 运行时间
         mins = int(self._world.elapsed_time // 60)
         secs = int(self._world.elapsed_time % 60)
-        draw_text(buffer, float(x + 6), float(line_y + 4), f"Time: {mins:02d}:{secs:02d}", (180, 180, 200, 200), 9)
+        if overlay is not None:
+            overlay.draw_text(x + 6, line_y + 2, f"运行时间: {mins:02d}:{secs:02d}", (180, 180, 200, 200), 12.0)
+
+        # 缩放提示（右边缘）
+        draw_line(buffer, float(x + w - 3), float(y), float(x + w - 3), float(y + panel_h), (100, 100, 180, 100), 2)
 
         # 阵营信息
         row_y = float(line_y + 22)
@@ -199,63 +220,74 @@ class InfoPanel:
         panel_w: int,
         stats: dict[str, object],
     ) -> float:
-        """渲染单个阵营的信息行.
+        """渲染单个阵营的信息行（中文）.
 
         Returns:
             下一行的 Y 坐标
         """
-        from src.render.sprite import draw_rect, draw_text
+        from src.render.sprite import draw_rect
 
         x = panel_x
         y = start_y
         color = stats["color"]
         r, g, b = self._hex_to_rgb(str(color))
 
+        overlay = getattr(self._world, 'overlay', None)
+
         # 阵营名 + 颜色条
         draw_rect(buffer, float(x + 4), float(y - 1), 10, 10, (r, g, b, 200), 0)
         name = str(stats["name"])
         strategy = str(stats["strategy"])
-        draw_text(buffer, float(x + 18), float(y), f"{name} [{strategy}]", (r, g, b, 240), 10)
-        y += 14
+        strategy_cn = {
+            "expand": "扩张",
+            "rush": "突击",
+            "defense": "防御",
+            "tech": "科技",
+        }.get(strategy, strategy)
+        if overlay is not None:
+            overlay.draw_text(x + 18, int(y) - 2, f"{name} [{strategy_cn}]", (r, g, b, 240), 12.0)
+        y += 16
 
         # 资源
         wood = int(stats["wood"])
         ore = int(stats["ore"])
-        draw_text(buffer, float(x + 10), float(y), f"W:{wood} O:{ore}", (180, 200, 180, 220), 9)
-        y += 12
+        if overlay is not None:
+            overlay.draw_text(x + 10, int(y) - 2, f"木材:{wood}  矿石:{ore}", (180, 200, 180, 220), 11.0)
+        y += 14
 
         # 单位
         alive = int(stats["alive"])
         dead = int(stats["dead"])
-        total = int(stats["total"])
         produced = int(stats["units_produced"])
         lost = int(stats["units_lost"])
-        draw_text(
-            buffer, float(x + 10), float(y),
-            f"Units: {alive} (+{produced}) / {lost} lost (dead:{dead})",
-            (180, 180, 220, 220), 9,
-        )
-        y += 12
+        if overlay is not None:
+            overlay.draw_text(
+                x + 10, int(y) - 2,
+                f"存活:{alive}(+{produced})  阵亡:{lost}",
+                (180, 180, 220, 220), 11.0,
+            )
+        y += 14
 
         # 建筑 + 武器
         wb = int(stats["workbenches"])
         max_bench = int(stats["max_bench"])
         br = int(stats["barracks"])
         weapons = int(stats["weapon_count"])
-        draw_text(
-            buffer, float(x + 10), float(y),
-            f"Build: WB={wb}(Lv{max_bench}) Bx={br} | Armed: {weapons}",
-            (180, 180, 220, 220), 9,
-        )
-        y += 14
+        if overlay is not None:
+            overlay.draw_text(
+                x + 10, int(y) - 2,
+                f"工具台:{wb}(Lv{max_bench}) 兵营:{br} 武装:{weapons}",
+                (180, 180, 220, 220), 11.0,
+            )
+        y += 16
 
         return y
 
     def _calculate_height(self) -> int:
         """计算面板高度."""
         rows_per_faction = 4
-        faction_lines = rows_per_faction * 14 * len(self._world.factions) if self._world.factions else 0
-        return self.HEADER_HEIGHT + 24 + faction_lines + 8
+        faction_lines = rows_per_faction * 16 * len(self._world.factions) if self._world.factions else 0
+        return self.HEADER_HEIGHT + 28 + faction_lines + 8
 
     @staticmethod
     def _hex_to_rgb(hex_color: str) -> tuple[int, int, int]:

@@ -92,7 +92,14 @@ class FactionBlackboard:
         return sum(1 for r in self.unit_roles.values() if r == role)
 
     def auto_assign_roles(self, all_units: list[Unit]) -> None:
-        """自动分配角色以满足需求."""
+        """自动分配角色以满足需求（动态策略）.
+
+        根据当前策略调整角色比例:
+        - expand: 采集优先 (3采集:1建造:1战士)
+        - rush: 战斗优先 (1采集:0建造:4战士)
+        - defense: 平衡 (2采集:1建造:2战士)
+        - tech: 建造优先 (2采集:2建造:1战士)
+        """
         alive_units = [u for u in all_units if u.alive]
         # 清除已死亡单位的角色记录
         alive_ids = {u.unit_id for u in alive_units}
@@ -104,13 +111,36 @@ class FactionBlackboard:
         if not idle_units:
             return
 
-        # 按优先级分配: gatherer > builder > soldier > scout
-        needed: list[tuple[str, int]] = [
-            ("gatherer", self.gatherers_needed),
-            ("builder", self.builders_needed),
-            ("soldier", self.soldiers_needed),
-            ("scout", self.scouts_needed),
-        ]
+        # 根据策略动态调整需求
+        total = len(alive_units)
+        if self.current_strategy == "rush":
+            needed: list[tuple[str, int]] = [
+                ("gatherer", max(1, total // 5)),
+                ("builder", 0),
+                ("soldier", total - max(1, total // 5)),
+                ("scout", max(1, total // 8)),
+            ]
+        elif self.current_strategy == "defense":
+            needed = [
+                ("gatherer", max(2, total // 3)),
+                ("builder", max(1, total // 5)),
+                ("soldier", max(2, total // 3)),
+                ("scout", max(1, total // 8)),
+            ]
+        elif self.current_strategy == "tech":
+            needed = [
+                ("gatherer", max(2, total // 3)),
+                ("builder", max(2, total // 4)),
+                ("soldier", max(1, total // 5)),
+                ("scout", 0),
+            ]
+        else:  # expand (默认)
+            needed = [
+                ("gatherer", max(3, total // 2)),
+                ("builder", max(1, total // 5)),
+                ("soldier", max(1, total // 3)),
+                ("scout", max(1, total // 10)),
+            ]
 
         for role, need in needed:
             current = self.count_role(role)
@@ -118,6 +148,15 @@ class FactionBlackboard:
             while deficit > 0 and idle_units:
                 unit = idle_units.pop(0)
                 self.assign_role(unit.unit_id, role)
+                # 同步更新unit的role字段
+                from src.entity.unit import UnitRole
+                role_map = {
+                    "gatherer": UnitRole.GATHERER,
+                    "builder": UnitRole.BUILDER,
+                    "soldier": UnitRole.SOLDIER,
+                    "scout": UnitRole.SCOUT,
+                }
+                unit.role = role_map.get(role, UnitRole.IDLE)
                 deficit -= 1
 
     def add_build_order(self, building_type: str, level: int, phys_x: float, phys_y: float) -> None:

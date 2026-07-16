@@ -538,34 +538,33 @@ def draw_stickman(
     shin_len = 5.0
 
     # ── 动画相位 ──
-    breath_offset = 0.5 if (anim_frame % 30) < 15 else 0.0
+    # 使用连续sin函数替代阶跃，更流畅
+    t = anim_frame * 0.05  # 时间因子（约1秒=3.0）
+    breath_offset = _math.sin(t * 1.2) * 0.4  # 连续呼吸
 
     # walking摆动
     walk_phase = 0.0
     walk_swing = 0.0
     if state == "walking":
-        walk_phase = (anim_frame % 20) / 20.0
+        walk_phase = t * 3.0  # 行走频率
         walk_swing = _math.sin(walk_phase * _math.pi * 2) * 0.5  # 弧度
 
     # mining挥臂
     mining_angle = 0.0
     if state == "mining":
-        mining_phase = (anim_frame % 18) / 18.0
+        mining_phase = t * 2.5
         mining_angle = _math.sin(mining_phase * _math.pi) * 0.8
 
     # attacking/fighting挥臂
     attack_offset = 0.0
     if state in ("attacking", "fighting"):
-        attack_phase = (anim_frame % 15) / 15.0
-        if attack_phase < 0.5:
-            attack_offset = attack_phase * 1.2
-        else:
-            attack_offset = (1.0 - attack_phase) * 1.2
+        attack_phase = t * 4.0
+        attack_offset = _math.sin(attack_phase * _math.pi) * 0.6
 
     # climbing攀爬
     climb_phase = 0.0
     if state == "climbing":
-        climb_phase = (anim_frame % 16) / 16.0
+        climb_phase = t * 2.0
 
     # fleeing逃跑
     flee_lean = 0.0
@@ -575,22 +574,22 @@ def draw_stickman(
     # building建造
     build_phase = 0.0
     if state == "building":
-        build_phase = (anim_frame % 20) / 20.0
+        build_phase = t * 2.0
 
     # crafting制作
     craft_phase = 0.0
     if state == "crafting":
-        craft_phase = (anim_frame % 24) / 24.0
+        craft_phase = t * 2.5
 
     # dying倒下
     dying_progress = 0.0
     if state == "dying":
-        dying_progress = min(1.0, (anim_frame % 20) / 10.0)
+        dying_progress = min(1.0, t * 0.3)
 
     # arguing争吵
     argue_phase = 0.0
     if state == "arguing":
-        argue_phase = (anim_frame % 12) / 12.0
+        argue_phase = t * 3.0
 
     # carrying搬运
     carry_phase = 0.0

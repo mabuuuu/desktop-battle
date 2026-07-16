@@ -531,6 +531,134 @@ class Wander(py_trees.behaviour.Behaviour):
         return py_trees.common.Status.RUNNING
 
 
+class Patrol(py_trees.behaviour.Behaviour):
+    """巡逻: 在己方区域和前线之间移动.
+
+    Blackboard:
+        unit: Unit
+        world: World
+    """
+
+    def __init__(self, name: str = "Patrol") -> None:
+        super().__init__(name)
+
+    def update(self) -> py_trees.common.Status:
+        bb = py_trees.blackboard.Blackboard()
+        unit, world = _get_unit_and_world(bb)
+        if unit is None or world is None or not unit.alive:
+            return py_trees.common.Status.FAILURE
+
+        faction_bb = _bb_safe_get(bb, "faction_bb")
+        sx, sy = unit.screen_position(world.screen_height)
+
+        # 巡逻目标: 在基地和前线之间交替
+        patrol_target = _bb_safe_get(bb, "patrol_target_x")
+        patrol_phase = _bb_safe_get(bb, "patrol_phase")
+
+        if patrol_target is None or patrol_phase is None:
+            # 初始化: 先去前线
+            if unit.faction_name == world.factions[0].name:
+                patrol_target = world.screen_width * 0.6
+            else:
+                patrol_target = world.screen_width * 0.4
+            patrol_phase = "front"
+            bb.set("patrol_target_x", patrol_target)
+            bb.set("patrol_phase", patrol_phase)
+
+        if abs(sx - float(patrol_target)) < 30.0:
+            # 到达目标，切换方向
+            if patrol_phase == "front":
+                # 回基地附近
+                if faction_bb is not None:
+                    patrol_target = faction_bb.rally_point[0] + random.uniform(-30, 30)
+                else:
+                    patrol_target = sx - 100 * (1 if sx > world.screen_width / 2 else -1)
+                bb.set("patrol_phase", "base")
+            else:
+                # 去前线
+                if unit.faction_name == world.factions[0].name:
+                    patrol_target = world.screen_width * 0.6 + random.uniform(-30, 30)
+                else:
+                    patrol_target = world.screen_width * 0.4 + random.uniform(-30, 30)
+                bb.set("patrol_phase", "front")
+            bb.set("patrol_target_x", patrol_target)
+
+        unit.state = UnitState.PATROLLING
+        unit.move_toward(float(patrol_target))
+        return py_trees.common.Status.RUNNING
+
+
+class ScoutArea(py_trees.behaviour.Behaviour):
+    """侦察: 向敌方区域移动，发现敌人后返回报告.
+
+    Blackboard:
+        unit: Unit
+        world: World
+    """
+
+    def __init__(self, name: str = "Scout") -> None:
+        super().__init__(name)
+
+    def update(self) -> py_trees.common.Status:
+        bb = py_trees.blackboard.Blackboard()
+        unit, world = _get_unit_and_world(bb)
+        if unit is None or world is None or not unit.alive:
+            return py_trees.common.Status.FAILURE
+
+        sx, sy = unit.screen_position(world.screen_height)
+        scout_phase = _bb_safe_get(bb, "scout_phase")
+
+        if scout_phase is None:
+            scout_phase = "advance"
+            bb.set("scout_phase", scout_phase)
+
+        if scout_phase == "advance":
+            # 向敌方区域移动
+            if unit.faction_name == world.factions[0].name:
+                target_x = world.screen_width * 0.75
+            else:
+                target_x = world.screen_width * 0.25
+
+            # 检测到敌人 → 标记威胁并返回
+            for other in world.units:
+                if other.alive and other.faction_name != unit.faction_name:
+                    ox, oy = other.screen_position(world.screen_height)
+                    if _distance(sx, sy, ox, oy) < unit.perception_range:
+                        # 发现敌人，设置威胁信息
+                        faction_bb = _bb_safe_get(bb, "faction_bb")
+                        if faction_bb is not None:
+                            faction_bb.threat_level = min(1.0, faction_bb.threat_level + 0.1)
+                            faction_bb.enemy_base_x = ox
+                        bb.set("scout_phase", "retreat")
+                        break
+
+            if scout_phase == "advance":
+                if abs(sx - target_x) < 50.0:
+                    # 到达敌方区域，返回
+                    bb.set("scout_phase", "retreat")
+                else:
+                    unit.state = UnitState.SCOUTING
+                    unit.move_toward(target_x)
+                    return py_trees.common.Status.RUNNING
+
+        if scout_phase == "retreat":
+            # 返回基地
+            faction = _find_faction(unit.faction_name, world)
+            if faction is None:
+                return py_trees.common.Status.FAILURE
+
+            if abs(sx - faction.spawn_x) < 40.0:
+                bb.set("scout_phase", None)
+                unit.state = UnitState.IDLE
+                return py_trees.common.Status.SUCCESS
+
+            unit.state = UnitState.SCOUTING
+            unit.move_toward(faction.spawn_x)
+            return py_trees.common.Status.RUNNING
+
+        return py_trees.common.Status.RUNNING
+
+
 # ── 辅助函数 ──
 
 def _find_faction(name: str, world: World) -> object | None:

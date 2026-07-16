@@ -310,3 +310,71 @@ class NoHigherPriorityTask(py_trees.behaviour.Behaviour):
 
     def update(self) -> py_trees.common.Status:
         return py_trees.common.Status.SUCCESS
+
+
+class IsGatherer(py_trees.behaviour.Behaviour):
+    """单位是生产者角色."""
+
+    def __init__(self, name: str = "Is Gatherer") -> None:
+        super().__init__(name)
+
+    def update(self) -> py_trees.common.Status:
+        bb = _get_global_blackboard()
+        unit = _get_unit_from_blackboard(bb)
+        if unit is None:
+            return py_trees.common.Status.FAILURE
+        from src.entity.unit import UnitRole
+        if unit.role == UnitRole.GATHERER:
+            return py_trees.common.Status.SUCCESS
+        return py_trees.common.Status.FAILURE
+
+
+class IsBuilder(py_trees.behaviour.Behaviour):
+    """单位是建造者角色."""
+
+    def __init__(self, name: str = "Is Builder") -> None:
+        super().__init__(name)
+
+    def update(self) -> py_trees.common.Status:
+        bb = _get_global_blackboard()
+        unit = _get_unit_from_blackboard(bb)
+        if unit is None:
+            return py_trees.common.Status.FAILURE
+        from src.entity.unit import UnitRole
+        if unit.role == UnitRole.BUILDER:
+            return py_trees.common.Status.SUCCESS
+        return py_trees.common.Status.FAILURE
+
+
+class IsSoldier(py_trees.behaviour.Behaviour):
+    """单位是战士角色."""
+
+    def __init__(self, name: str = "Is Soldier") -> None:
+        super().__init__(name)
+
+    def update(self) -> py_trees.common.Status:
+        bb = _get_global_blackboard()
+        unit = _get_unit_from_blackboard(bb)
+        if unit is None:
+            return py_trees.common.Status.FAILURE
+        from src.entity.unit import UnitRole
+        if unit.role == UnitRole.SOLDIER:
+            return py_trees.common.Status.SUCCESS
+        return py_trees.common.Status.FAILURE
+
+
+class IsScout(py_trees.behaviour.Behaviour):
+    """单位是侦察角色."""
+
+    def __init__(self, name: str = "Is Scout") -> None:
+        super().__init__(name)
+
+    def update(self) -> py_trees.common.Status:
+        bb = _get_global_blackboard()
+        unit = _get_unit_from_blackboard(bb)
+        if unit is None:
+            return py_trees.common.Status.FAILURE
+        from src.entity.unit import UnitRole
+        if unit.role == UnitRole.SCOUT:
+            return py_trees.common.Status.SUCCESS
+        return py_trees.common.Status.FAILURE

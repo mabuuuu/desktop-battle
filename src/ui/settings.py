@@ -56,6 +56,7 @@ class RuntimeSettings:
     # ── 物理 ──
     gravity: float = 900.0
     move_speed_multiplier: float = 1.0  # 0.5 ~ 3.0
+    unit_scale: float = 1.0  # 0.5 ~ 3.0
 
 
 class SettingsManager:
@@ -127,6 +128,7 @@ class SettingsManager:
             "ai_interval": self.settings.ai_interval,
             "gravity": self.settings.gravity,
             "move_speed_multiplier": self.settings.move_speed_multiplier,
+            "unit_scale": self.settings.unit_scale,
         }
 
     def _apply_data(self, data: dict[str, Any]) -> None:
@@ -155,6 +157,8 @@ class SettingsManager:
             self.settings.gravity = float(data["gravity"])
         if "move_speed_multiplier" in data:
             self.settings.move_speed_multiplier = float(data["move_speed_multiplier"])
+        if "unit_scale" in data:
+            self.settings.unit_scale = float(data["unit_scale"])
 
     def set(self, key: str, value: Any) -> None:
         """修改单个设置项.

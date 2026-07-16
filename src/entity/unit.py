@@ -35,6 +35,18 @@ class UnitState(str, Enum):
     DYING = "dying"
     CARRYING = "carrying"
     ARGUING = "arguing"
+    PATROLLING = "patrolling"  # 巡逻
+    SCOUTING = "scouting"      # 侦察
+
+
+class UnitRole(str, Enum):
+    """单位职责角色."""
+
+    GATHERER = "gatherer"    # 生产者: 采集+运送
+    BUILDER = "builder"      # 建造者: 建造+制作
+    SOLDIER = "soldier"      # 战士: 巡逻+战斗
+    SCOUT = "scout"          # 侦察: 探索+预警
+    IDLE = "idle"            # 未分配
 
 
 @dataclass
@@ -64,9 +76,13 @@ class Unit:
 
     # ── 状态 ──
     state: UnitState = UnitState.IDLE
+    prev_state: UnitState = UnitState.IDLE
+    state_blend: float = 0.0  # 状态过渡混合因子 (0=旧状态, 1=新状态)
+    anim_time: float = 0.0  # 动画时间(秒)，替代anim_frame
     anim_frame: int = 0
     facing_right: bool = True
     alive: bool = True
+    role: UnitRole = UnitRole.IDLE  # 当前职责
 
     # ── 目标 ──
     target_id: int | None = None
@@ -219,8 +235,16 @@ class Unit:
             return None
 
     def update_animation(self) -> None:
-        """更新动画帧."""
-        self.anim_frame += 1
+        """更新动画帧（时间驱动）."""
+        self.anim_time += 1.0 / 60.0  # 假设60fps
+        self.anim_frame = int(self.anim_time * 60.0) % 10000  # 兼容旧代码
+
+        # 状态过渡混合
+        if self.state != self.prev_state:
+            self.state_blend = 0.0
+            self.prev_state = self.state
+        elif self.state_blend < 1.0:
+            self.state_blend = min(1.0, self.state_blend + 0.15)  # ~7帧过渡
 
     def render(
         self,

@@ -14,6 +14,7 @@ from infi.systray import SysTrayIcon
 if TYPE_CHECKING:
     from src.core.game_loop import GameLoop
     from src.ui.panel import InfoPanel
+    from src.ui.settings_dialog import SettingsDialog
 
 
 class TrayManager:
@@ -29,6 +30,7 @@ class TrayManager:
     def __init__(self, game_loop: GameLoop, panel: InfoPanel | None = None) -> None:
         self._game_loop: GameLoop = game_loop
         self._panel: InfoPanel | None = panel
+        self._settings_dialog: SettingsDialog | None = None
 
         # 菜单格式: (文本, 图标路径或None, 回调函数或SysTrayIcon.QUIT)
         self._menu: tuple = (
@@ -79,12 +81,12 @@ class TrayManager:
             self._panel.toggle()
 
     def _on_open_settings(self, systray: SysTrayIcon) -> None:
-        """打开设置 — 目前通过控制台打印设置信息."""
-        from src.ui.settings import SettingsManager
+        """打开设置弹窗."""
+        from src.ui.settings_dialog import SettingsDialog
         try:
-            sm = SettingsManager.get_instance()
-            sm.save()
-            self._game_loop.paused = True  # 打开设置时暂停游戏
+            if self._settings_dialog is None or not self._settings_dialog.is_open:
+                self._settings_dialog = SettingsDialog(self._game_loop)
+                self._settings_dialog.show()
         except Exception:
             pass
 

@@ -249,14 +249,41 @@ class World:
         self._panel = InfoPanel(self)
 
     def _create_bt_for_unit(self, unit: Unit) -> None:
-        """为单位创建行为树."""
-        bt = create_behavior_tree_for_unit(unit.unit_id, f"U{unit.unit_id}")
+        """为单位创建行为树（根据角色）."""
+        from src.behavior.trees import create_behavior_tree_for_role
+        role = self._get_unit_role(unit)
+        bt = create_behavior_tree_for_role(role, unit.unit_id, f"U{unit.unit_id}")
         # 设置黑板
         bt_bb = py_trees.blackboard.Blackboard()
         bt_bb.set("unit", unit)
         bt_bb.set("world", self)
         bt_bb.set("faction_bb", self._faction_blackboards.get(unit.faction_name))
         self._unit_behavior_trees[unit.unit_id] = bt
+
+    def _get_unit_role(self, unit: Unit) -> str:
+        """获取单位当前角色."""
+        bb = self._faction_blackboards.get(unit.faction_name)
+        if bb is not None:
+            return bb.get_role(unit.unit_id)
+        return "idle"
+
+    def _rebuild_bt_if_role_changed(self, unit: Unit) -> None:
+        """如果角色变更，重建行为树."""
+        from src.entity.unit import UnitRole
+        current_role = self._get_unit_role(unit)
+        old_role = unit.role.value
+        if current_role != old_role:
+            # 更新unit的role字段
+            role_map = {
+                "gatherer": UnitRole.GATHERER,
+                "builder": UnitRole.BUILDER,
+                "soldier": UnitRole.SOLDIER,
+                "scout": UnitRole.SCOUT,
+                "idle": UnitRole.IDLE,
+            }
+            unit.role = role_map.get(current_role, UnitRole.IDLE)
+            # 重建行为树
+            self._create_bt_for_unit(unit)
 
     def _init_logging(self) -> None:
         """初始化日志系统."""
@@ -428,12 +455,31 @@ class World:
         unit = self._create_unit(faction, px, py)
         faction.units_produced += 1
 
-        # 为新单位创建行为树
-        self._create_bt_for_unit(unit)
-        # 自动分配角色
+        # 为新单位创建行为树（根据分配的角色）
         bb = self._faction_blackboards.get(faction.name)
         if bb is not None:
             bb.auto_assign_roles(self.units)
+            role = bb.get_role(unit.unit_id)
+        else:
+            role = "idle"
+        # 根据角色创建行为树
+        from src.behavior.trees import create_behavior_tree_for_role
+        from src.entity.unit import UnitRole
+        bt = create_behavior_tree_for_role(role, unit.unit_id, f"U{unit.unit_id}")
+        bt_bb = py_trees.blackboard.Blackboard()
+        bt_bb.set("unit", unit)
+        bt_bb.set("world", self)
+        bt_bb.set("faction_bb", bb)
+        self._unit_behavior_trees[unit.unit_id] = bt
+        # 设置unit角色
+        role_map = {
+            "gatherer": UnitRole.GATHERER,
+            "builder": UnitRole.BUILDER,
+            "soldier": UnitRole.SOLDIER,
+            "scout": UnitRole.SCOUT,
+            "idle": UnitRole.IDLE,
+        }
+        unit.role = role_map.get(role, UnitRole.IDLE)
 
         try:
             from src.game_logging.system_log import log_unit_spawned
@@ -508,18 +554,17 @@ class World:
             self._panel.update(self.elapsed_time)
 
     def _update_behavior_trees(self) -> None:
-        """Tick 所有单位的行为树."""
+        """Tick 所有单位的行为树，并检查角色变更."""
         for unit in self.units:
             if not unit.alive:
                 continue
+
+            # 检查角色是否变更，如变更则重建行为树
+            self._rebuild_bt_if_role_changed(unit)
+
             bt = self._unit_behavior_trees.get(unit.unit_id)
             if bt is None:
                 continue
-
-            # 更新黑板数据
-            bt_root = bt
-            if hasattr(bt, "root"):
-                bt_root = bt.root
 
             try:
                 # 刷新黑板中的 unit 引用
@@ -576,19 +621,20 @@ class World:
             ore = faction.ore
             bench_level = faction.get_workbench_highest_level()
 
-            # 简单规则
+            # 动态策略切换
             if alive < 3:
                 bb.current_strategy = "defense"
-            elif wood >= 30:
+            elif wood >= 30 and ore >= 10:
                 bb.current_strategy = "tech"
+            elif alive >= 6:
+                bb.current_strategy = "rush"
             else:
                 bb.current_strategy = "expand"
 
             faction.current_strategy = bb.current_strategy
-            bb.gatherers_needed = max(1, alive // 2)
-            bb.builders_needed = 1 if alive >= 3 else 0
-            bb.soldiers_needed = max(1, alive - 3)
-            bb.scouts_needed = 0
+
+            # 按策略动态分配角色
+            bb.auto_assign_roles(self.units)
 
             # 自动建造
             if bench_level == 0 and wood >= 15:
@@ -724,19 +770,26 @@ class World:
         draw_text(buffer, sx - 4, sy - 10, spec.name[0], (255, 255, 255, 150), 8)
 
     def _render_hud(self, buffer: np.ndarray) -> None:
-        """渲染简单的HUD信息."""
-        from src.render.sprite import draw_text
+        """渲染简单的HUD信息（中文）."""
+        overlay = getattr(self, 'overlay', None)
+        if overlay is None:
+            return
 
         mins = int(self.elapsed_time // 60)
         secs = int(self.elapsed_time % 60)
-        time_text = f"Time: {mins:02d}:{secs:02d}"
-        draw_text(buffer, 10, 10, time_text, (255, 255, 255, 200), 10)
+        overlay.draw_text(10, 10, f"运行: {mins:02d}:{secs:02d}", (255, 255, 255, 200), 12.0)
 
         y_offset = 30
         for faction in self.factions:
-            info = f"{faction.name}: U={faction.alive_count} W={faction.wood} O={faction.ore} [{faction.current_strategy}]"
+            strategy_cn = {
+                "expand": "扩张",
+                "rush": "突击",
+                "defense": "防御",
+                "tech": "科技",
+            }.get(faction.current_strategy, faction.current_strategy)
+            info = f"{faction.name}: 存活={faction.alive_count} 木={faction.wood} 矿={faction.ore} [{strategy_cn}]"
             r, g, b, _ = Unit._hex_to_rgba(faction.color_hex)
-            draw_text(buffer, 10, y_offset, info, (r, g, b, 220), 10)
+            overlay.draw_text(10, y_offset, info, (r, g, b, 220), 12.0)
             y_offset += 18
 
     def get_total_unit_count(self) -> int:
